@@ -30,8 +30,11 @@ import {
   Brain,
   DollarSign,
   Flag,
-  Trophy
+  Trophy,
+  LogOut
 } from 'lucide-react'
+import { useAuth } from '../lib/auth'
+import { AuthScreen } from '../components/AuthScreen'
 import {
   LineChart,
   Line,
@@ -2610,8 +2613,9 @@ function ModeToggle({ mode, onToggle }: { mode: 'view' | 'log'; onToggle: () => 
 
 // Main Dashboard Component
 export default function KnarrDashboard() {
+  const { user, isLoading: authLoading, isConfigured, signOut } = useAuth()
   const [mounted, setMounted] = useState(false)
-  const [userName] = useState('Voyager')
+  const [userName, setUserName] = useState('Voyager')
   const [mode, setMode] = useState<'view' | 'log'>('view')
   const [modalType, setModalType] = useState<'calories' | 'weight' | 'heading' | null>(null)
   const [showWeightGoalModal, setShowWeightGoalModal] = useState(false)
@@ -2971,7 +2975,7 @@ export default function KnarrDashboard() {
     .slice(0, 10)
 
   // Loading state
-  if (!mounted) {
+  if (!mounted || authLoading) {
     return (
       <div className="min-h-screen bg-forge-black flex items-center justify-center">
         <motion.div
@@ -2983,6 +2987,11 @@ export default function KnarrDashboard() {
         </motion.div>
       </div>
     )
+  }
+
+  // Auth check - show login screen if Supabase is configured but user isn't logged in
+  if (isConfigured && !user) {
+    return <AuthScreen />
   }
 
   return (
@@ -3220,8 +3229,19 @@ export default function KnarrDashboard() {
                 <ModeToggle mode={mode} onToggle={() => setMode(mode === 'view' ? 'log' : 'view')} />
                 <div className="text-right hidden sm:block">
                   <p className="text-fog text-sm">{getGreeting()},</p>
-                  <p className="font-display text-lg text-bone font-semibold">{userName}</p>
+                  <p className="font-display text-lg text-bone font-semibold">
+                    {user?.email?.split('@')[0] || userName}
+                  </p>
                 </div>
+                {isConfigured && user && (
+                  <button
+                    onClick={() => signOut()}
+                    className="p-2 rounded-lg text-fog hover:text-bone hover:bg-white/5 transition-colors"
+                    title="Sign out"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                )}
               </motion.div>
             </div>
           </div>
