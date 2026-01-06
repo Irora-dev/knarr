@@ -3006,15 +3006,15 @@ export default function KnarrDashboard() {
           <source src="/bgmov.webm" type="video/webm" />
           <source src="/bgmov.mov" type="video/quicktime" />
         </video>
-        {/* Overlay with brightness variance */}
+        {/* Overlay with brightness variance - lightened for better visibility */}
         <div
           className="absolute inset-0"
           style={{
             background: `
-              radial-gradient(ellipse 80% 50% at 50% 20%, rgba(255, 255, 255, 0.08) 0%, transparent 60%),
-              radial-gradient(ellipse 40% 60% at 10% 50%, rgba(201, 162, 39, 0.05) 0%, transparent 50%),
-              radial-gradient(ellipse 40% 60% at 90% 60%, rgba(61, 90, 108, 0.06) 0%, transparent 50%),
-              linear-gradient(180deg, rgba(13, 13, 15, 0.5) 0%, rgba(13, 13, 15, 0.35) 30%, rgba(13, 13, 15, 0.4) 70%, rgba(13, 13, 15, 0.65) 100%)
+              radial-gradient(ellipse 80% 50% at 50% 20%, rgba(255, 255, 255, 0.12) 0%, transparent 60%),
+              radial-gradient(ellipse 40% 60% at 10% 50%, rgba(201, 162, 39, 0.06) 0%, transparent 50%),
+              radial-gradient(ellipse 40% 60% at 90% 60%, rgba(61, 90, 108, 0.08) 0%, transparent 50%),
+              linear-gradient(180deg, rgba(13, 13, 15, 0.25) 0%, rgba(13, 13, 15, 0.15) 30%, rgba(13, 13, 15, 0.2) 70%, rgba(13, 13, 15, 0.4) 100%)
             `
           }}
         />
@@ -3228,6 +3228,7 @@ export default function KnarrDashboard() {
         </header>
 
         <main className="max-w-6xl mx-auto px-6 py-4">
+          <div className="glass-main p-6">
           <AnimatePresence mode="wait">
           {mode === 'log' ? (
             /* ==================== LOG MODE ==================== */
@@ -3824,6 +3825,7 @@ export default function KnarrDashboard() {
             </motion.div>
           )}
           </AnimatePresence>
+          </div>
         </main>
       </div>
 
