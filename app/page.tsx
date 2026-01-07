@@ -2790,6 +2790,20 @@ export default function KnarrDashboard() {
       return dateB - dateA
     })
 
+  // Motivational quotes for when no data insight is available
+  const motivationalQuotes = [
+    { icon: '🧭', text: 'The journey of a thousand miles begins with a single step' },
+    { icon: '⚓', text: 'Smooth seas never made a skilled sailor' },
+    { icon: '🌊', text: 'Small daily improvements lead to remarkable results' },
+    { icon: '💪', text: 'Progress, not perfection, is what matters' },
+    { icon: '🔥', text: 'Every day is a new opportunity to grow stronger' },
+    { icon: '🎯', text: 'Focus on the process, and results will follow' },
+    { icon: '⭐', text: 'Consistency beats intensity every time' },
+    { icon: '🌅', text: 'Today is another chance to be better than yesterday' },
+    { icon: '🚀', text: 'Your only limit is the one you set for yourself' },
+    { icon: '🏔️', text: 'Great things are built one habit at a time' },
+  ]
+
   // Top insight calculation (single line)
   const topInsight = (() => {
     const sortedWeights = [...weights].sort((a, b) =>
@@ -2799,36 +2813,38 @@ export default function KnarrDashboard() {
       new Date(b.date).getTime() - new Date(a.date).getTime()
     )
 
-    // Weight trend
-    if (sortedWeights.length >= 14) {
-      const recentWeek = sortedWeights.slice(0, 7)
-      const previousWeek = sortedWeights.slice(7, 14)
-      const avgRecent = recentWeek.reduce((sum, w) => sum + w.weight, 0) / recentWeek.length
-      const avgPrevious = previousWeek.reduce((sum, w) => sum + w.weight, 0) / previousWeek.length
-      const diff = avgRecent - avgPrevious
-      if (Math.abs(diff) >= 0.3) {
-        return { icon: diff < 0 ? '📉' : '📈', text: `Weight ${diff < 0 ? 'down' : 'up'} ${Math.abs(diff).toFixed(1)}kg vs last week` }
+    // Weight trend (lowered threshold)
+    if (sortedWeights.length >= 7) {
+      const recentDays = sortedWeights.slice(0, Math.min(7, sortedWeights.length))
+      const olderDays = sortedWeights.slice(Math.min(7, sortedWeights.length))
+      if (olderDays.length >= 3) {
+        const avgRecent = recentDays.reduce((sum, w) => sum + w.weight, 0) / recentDays.length
+        const avgOlder = olderDays.slice(0, Math.min(7, olderDays.length)).reduce((sum, w) => sum + w.weight, 0) / Math.min(7, olderDays.length)
+        const diff = avgRecent - avgOlder
+        if (Math.abs(diff) >= 0.3) {
+          return { icon: diff < 0 ? '📉' : '📈', text: `Weight ${diff < 0 ? 'down' : 'up'} ${Math.abs(diff).toFixed(1)}kg from your average` }
+        }
       }
     }
 
-    // Calorie consistency
-    if (sortedCalories.length >= 5 && calorieGoal) {
-      const recent = sortedCalories.slice(0, 7)
-      const daysOnTarget = recent.filter(c => Math.abs(c.calories - calorieGoal) <= calorieGoal * 0.1).length
-      if (daysOnTarget >= 5) return { icon: '🎯', text: `${daysOnTarget}/7 days within calorie target` }
+    // Calorie consistency (lowered threshold)
+    if (sortedCalories.length >= 3 && calorieGoal) {
+      const recent = sortedCalories.slice(0, Math.min(7, sortedCalories.length))
+      const daysOnTarget = recent.filter(c => Math.abs(c.calories - calorieGoal) <= calorieGoal * 0.15).length
+      if (daysOnTarget >= 3) return { icon: '🎯', text: `${daysOnTarget}/${recent.length} days within calorie target` }
     }
 
-    // Habit consistency
-    if (habitLogs.length >= 14 && activeHabits.length > 0) {
-      const uniqueDates = [...new Set(habitLogs.map(l => l.date))].slice(-14)
+    // Habit consistency (lowered threshold)
+    if (habitLogs.length >= 5 && activeHabits.length > 0) {
+      const uniqueDates = [...new Set(habitLogs.map(l => l.date))].slice(-7)
       const highDays = uniqueDates.filter(date => {
         const dayLogs = habitLogs.filter(l => l.date === date && l.completed)
-        return dayLogs.length >= activeHabits.length * 0.8
+        return dayLogs.length >= activeHabits.length * 0.7
       })
-      if (highDays.length >= 10) return { icon: '🔥', text: 'Strong habit consistency - 80%+ completion' }
+      if (highDays.length >= 3) return { icon: '🔥', text: `Strong habits - ${highDays.length} great days this week` }
     }
 
-    // Streak
+    // Streak (lowered threshold)
     const uniqueCalorieDates = new Set(calories.map(c => c.date))
     let streak = 0
     for (let i = 0; i < 30; i++) {
@@ -2838,9 +2854,11 @@ export default function KnarrDashboard() {
       if (uniqueCalorieDates.has(dateStr!)) streak++
       else if (i > 0) break
     }
-    if (streak >= 7) return { icon: '🏆', text: `${streak} day logging streak!` }
+    if (streak >= 3) return { icon: '🏆', text: `${streak} day logging streak - keep it going!` }
 
-    return null
+    // Return random motivational quote if no data insight
+    const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000)
+    return motivationalQuotes[dayOfYear % motivationalQuotes.length]
   })()
 
   // Weight calculations
@@ -3926,12 +3944,10 @@ export default function KnarrDashboard() {
           </div>
 
           {/* Single Line Insight */}
-          {topInsight && (
-            <div className="flex items-center gap-2 mb-3 px-1">
-              <span className="text-base">{topInsight.icon}</span>
-              <span className="text-sm text-fog">{topInsight.text}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 mb-3 px-1">
+            <span className="text-base">{topInsight?.icon || '💡'}</span>
+            <span className="text-sm text-fog">{topInsight?.text || 'Keep logging to unlock insights about your patterns'}</span>
+          </div>
 
           {/* Chart Filter Buttons */}
           <div className="flex flex-wrap gap-2 mb-4">
