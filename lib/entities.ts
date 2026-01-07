@@ -220,6 +220,14 @@ export const habitLogOps = createEntityOperations<{
   created_at: string
 }>('habit_log')
 
+export const taskOps = createEntityOperations<{
+  name: string
+  scheduled_date: string | null
+  completed: boolean
+  completed_at: string | null
+  created_at: string
+}>('task')
+
 export const headingOps = createEntityOperations<{
   date: string
   intention: string

@@ -486,6 +486,41 @@
   }
 
   /* ============================================
+     TASK CHECKBOX
+     ============================================ */
+  .task-item {
+    @apply flex items-center gap-3 p-3 rounded-lg transition-all duration-300;
+    background: rgba(42, 42, 48, 0.3);
+    border: 1px solid rgba(42, 42, 48, 0.4);
+  }
+
+  .task-item:hover {
+    background: rgba(42, 42, 48, 0.5);
+    border-color: rgba(232, 228, 223, 0.1);
+  }
+
+  .task-item.completing {
+    background: rgba(201, 162, 39, 0.15);
+    border-color: rgba(201, 162, 39, 0.3);
+  }
+
+  .task-item.completing span {
+    text-decoration: line-through;
+    color: var(--fog-grey);
+  }
+
+  .task-checkbox {
+    @apply w-5 h-5 rounded flex items-center justify-center transition-all duration-300 flex-shrink-0;
+    border: 2px solid var(--fog-grey);
+  }
+
+  .task-checkbox.checked {
+    background: var(--ember-gold);
+    border-color: var(--ember-gold);
+    box-shadow: 0 0 12px rgba(201, 162, 39, 0.5);
+  }
+
+  /* ============================================
      HEADER STYLES
      ============================================ */
   .page-header {

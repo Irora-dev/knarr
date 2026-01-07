@@ -39,6 +39,16 @@ export interface HabitLog {
   created_at: string
 }
 
+export interface Task {
+  id: string
+  user_id: string
+  name: string
+  scheduled_date: string | null  // YYYY-MM-DD or null for "today"
+  completed: boolean
+  completed_at: string | null    // timestamp for animation timing
+  created_at: string
+}
+
 export interface Heading {
   id: string
   user_id: string

@@ -28,6 +28,7 @@ export const ENTITY_TYPES = {
   WEIGHT_ENTRY: 'weight_entry',
   HABIT: 'habit',
   HABIT_LOG: 'habit_log',
+  TASK: 'task',
   HEADING: 'heading',
   MESSAGE_BOTTLE: 'message_bottle',
   WAYPOINT: 'waypoint',

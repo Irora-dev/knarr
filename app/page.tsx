@@ -78,6 +78,15 @@ interface HabitLog {
   completed: boolean
 }
 
+interface Task {
+  id: string
+  name: string
+  scheduled_date: string | null  // YYYY-MM-DD or null for "today"
+  completed: boolean
+  completed_at: string | null    // timestamp for animation timing
+  created_at: string
+}
+
 interface Heading {
   id: string
   date: string
@@ -203,6 +212,7 @@ const STORAGE_KEYS = {
   weights: 'knarr_weights',
   habits: 'knarr_habits',
   habitLogs: 'knarr_habit_logs',
+  tasks: 'knarr_tasks',
   headings: 'knarr_headings',
   userName: 'knarr_user_name',
   weightGoal: 'knarr_weight_goal',
@@ -2632,6 +2642,7 @@ export default function KnarrDashboard() {
   const [weights, setWeights] = useState<WeightEntry[]>([])
   const [habits, setHabits] = useState<Habit[]>([])
   const [habitLogs, setHabitLogs] = useState<HabitLog[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
   const [headings, setHeadings] = useState<Heading[]>([])
   const [weightGoal, setWeightGoal] = useState<number | null>(null)
   const [calorieGoal, setCalorieGoal] = useState<number | null>(null)
@@ -2650,6 +2661,10 @@ export default function KnarrDashboard() {
   const [editingStat, setEditingStat] = useState<'calories' | 'weight' | 'heading' | null>(null)
   const [editValue, setEditValue] = useState('')
   const [newHabitName, setNewHabitName] = useState('')
+  const [newTaskName, setNewTaskName] = useState('')
+  const [completingTaskIds, setCompletingTaskIds] = useState<Set<string>>(new Set())
+  const [showTaskDatePicker, setShowTaskDatePicker] = useState(false)
+  const [selectedTaskDate, setSelectedTaskDate] = useState<string | null>(null)
 
   // Auth and onboarding state
   const [devBypass, setDevBypass] = useState(false)
@@ -2725,6 +2740,7 @@ export default function KnarrDashboard() {
     setWeights(getFromStorage(STORAGE_KEYS.weights, []))
     setHabits(getFromStorage(STORAGE_KEYS.habits, []))
     setHabitLogs(getFromStorage(STORAGE_KEYS.habitLogs, []))
+    setTasks(getFromStorage(STORAGE_KEYS.tasks, []))
     setHeadings(getFromStorage(STORAGE_KEYS.headings, []))
     const savedGoal = getFromStorage<number | null>(STORAGE_KEYS.weightGoal, null)
     setWeightGoal(savedGoal && savedGoal > 0 ? savedGoal : null)
@@ -2743,6 +2759,16 @@ export default function KnarrDashboard() {
   const todayHabitLogs = habitLogs.filter(l => l.date === today)
   const activeHabits = habits.filter(h => h.active)
   const completedHabits = todayHabitLogs.filter(l => l.completed).length
+
+  // Today's tasks: scheduled for today OR no date specified (and not completed)
+  const todayTasks = tasks.filter(t =>
+    !t.completed && (t.scheduled_date === today || t.scheduled_date === null)
+  )
+
+  // Upcoming tasks: scheduled for future dates
+  const upcomingTasks = tasks.filter(t =>
+    !t.completed && t.scheduled_date && t.scheduled_date > today
+  )
 
   // Weight calculations
   const latestWeight = weights.length > 0
@@ -2940,6 +2966,52 @@ export default function KnarrDashboard() {
     )
     setHabits(updated)
     setToStorage(STORAGE_KEYS.habits, updated)
+  }
+
+  // Task handlers
+  const handleAddTask = (name: string, scheduledDate?: string) => {
+    const newTask: Task = {
+      id: crypto.randomUUID(),
+      name,
+      scheduled_date: scheduledDate || null,
+      completed: false,
+      completed_at: null,
+      created_at: new Date().toISOString(),
+    }
+    const updated = [...tasks, newTask]
+    setTasks(updated)
+    setToStorage(STORAGE_KEYS.tasks, updated)
+  }
+
+  const handleCompleteTask = (id: string) => {
+    // Add to completing set for animation
+    setCompletingTaskIds(prev => new Set(prev).add(id))
+
+    // Mark as completed
+    const updated = tasks.map(t =>
+      t.id === id ? { ...t, completed: true, completed_at: new Date().toISOString() } : t
+    )
+    setTasks(updated)
+    setToStorage(STORAGE_KEYS.tasks, updated)
+
+    // Remove from list after animation
+    setTimeout(() => {
+      setCompletingTaskIds(prev => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+      // Actually remove from storage
+      const filtered = tasks.filter(t => t.id !== id)
+      setTasks(filtered)
+      setToStorage(STORAGE_KEYS.tasks, filtered)
+    }, 1000)
+  }
+
+  const handleDeleteTask = (id: string) => {
+    const updated = tasks.filter(t => t.id !== id)
+    setTasks(updated)
+    setToStorage(STORAGE_KEYS.tasks, updated)
   }
 
   const handleSaveBearing = (bearingData: Omit<Bearing, 'id' | 'created_at'>) => {
@@ -3425,6 +3497,207 @@ export default function KnarrDashboard() {
                       <Plus className="w-4 h-4" />
                     </button>
                   )}
+                </div>
+              </div>
+
+              {/* Tasks Checklist */}
+              <div className="glass rounded-xl p-4 mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm text-bone font-semibold flex items-center gap-2">
+                    <Target className="w-4 h-4 text-ember" />
+                    Today's Tasks
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    {upcomingTasks.length > 0 && (
+                      <span className="text-xs text-ember bg-ember/10 px-2 py-0.5 rounded-full">
+                        {upcomingTasks.length} upcoming
+                      </span>
+                    )}
+                    <span className="text-xs text-stone">
+                      {todayTasks.length} {todayTasks.length === 1 ? 'task' : 'tasks'}
+                    </span>
+                  </div>
+                </div>
+
+                {todayTasks.length > 0 ? (
+                  <div className="space-y-2">
+                    <AnimatePresence>
+                      {todayTasks.map(task => {
+                        const isCompleting = completingTaskIds.has(task.id)
+                        return (
+                          <motion.div
+                            key={task.id}
+                            initial={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className={`task-item group ${isCompleting ? 'completing' : ''}`}
+                          >
+                            <button
+                              onClick={() => handleCompleteTask(task.id)}
+                              className="flex items-center gap-3 w-full text-left"
+                              disabled={isCompleting}
+                            >
+                              <div className={`task-checkbox ${isCompleting ? 'checked' : ''}`}>
+                                {isCompleting && (
+                                  <motion.svg
+                                    viewBox="0 0 24 24"
+                                    className="w-3 h-3 text-forge-black"
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                  >
+                                    <path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+                                  </motion.svg>
+                                )}
+                              </div>
+                              <span className={`text-sm flex-1 ${isCompleting ? 'text-stone line-through' : 'text-bone'}`}>
+                                {task.name}
+                              </span>
+                            </button>
+                            {!isCompleting && (
+                              <button
+                                onClick={() => handleDeleteTask(task.id)}
+                                className="p-1 text-stone hover:text-blood-red transition-colors opacity-0 group-hover:opacity-100"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                          </motion.div>
+                        )
+                      })}
+                    </AnimatePresence>
+                  </div>
+                ) : (
+                  <p className="text-stone text-sm text-center py-4">No tasks for today</p>
+                )}
+
+                {/* Add task inline */}
+                <div className="mt-3 pt-3 border-t border-iron-slate/50">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Add new task..."
+                      value={newTaskName}
+                      onChange={(e) => setNewTaskName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newTaskName.trim()) {
+                          handleAddTask(newTaskName.trim(), selectedTaskDate || undefined)
+                          setNewTaskName('')
+                          setSelectedTaskDate(null)
+                          setShowTaskDatePicker(false)
+                        }
+                      }}
+                      className="glass-recessed px-3 py-2 rounded-lg text-sm text-bone placeholder-stone flex-1 focus:outline-none focus:ring-1 focus:ring-ember/50"
+                    />
+                    <button
+                      onClick={() => setShowTaskDatePicker(!showTaskDatePicker)}
+                      className={`p-2 rounded-lg transition-colors ${
+                        selectedTaskDate
+                          ? 'bg-ember/20 text-ember'
+                          : 'bg-iron-slate/30 text-stone hover:text-bone hover:bg-iron-slate/50'
+                      }`}
+                      title="Schedule for a date"
+                    >
+                      <Calendar className="w-4 h-4" />
+                    </button>
+                    {newTaskName.trim() && (
+                      <button
+                        onClick={() => {
+                          handleAddTask(newTaskName.trim(), selectedTaskDate || undefined)
+                          setNewTaskName('')
+                          setSelectedTaskDate(null)
+                          setShowTaskDatePicker(false)
+                        }}
+                        className="p-2 rounded-lg bg-ember/20 text-ember hover:bg-ember/30 transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Selected date badge */}
+                  {selectedTaskDate && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-xs text-ember bg-ember/10 px-2 py-1 rounded-full flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        {selectedTaskDate === today
+                          ? 'Today'
+                          : selectedTaskDate === getDateOffset(1)
+                          ? 'Tomorrow'
+                          : formatShortDate(selectedTaskDate)}
+                        <button
+                          onClick={() => setSelectedTaskDate(null)}
+                          className="ml-1 hover:text-bone"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Date picker dropdown */}
+                  <AnimatePresence>
+                    {showTaskDatePicker && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="mt-2 glass-recessed rounded-lg p-3"
+                      >
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          <button
+                            onClick={() => {
+                              setSelectedTaskDate(null)
+                              setShowTaskDatePicker(false)
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                              selectedTaskDate === null
+                                ? 'bg-ember text-forge-black'
+                                : 'bg-iron-slate/50 text-fog hover:bg-iron-slate'
+                            }`}
+                          >
+                            Today
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedTaskDate(getDateOffset(1))
+                              setShowTaskDatePicker(false)
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                              selectedTaskDate === getDateOffset(1)
+                                ? 'bg-ember text-forge-black'
+                                : 'bg-iron-slate/50 text-fog hover:bg-iron-slate'
+                            }`}
+                          >
+                            Tomorrow
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedTaskDate(getDateOffset(7))
+                              setShowTaskDatePicker(false)
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                              selectedTaskDate === getDateOffset(7)
+                                ? 'bg-ember text-forge-black'
+                                : 'bg-iron-slate/50 text-fog hover:bg-iron-slate'
+                            }`}
+                          >
+                            Next Week
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="date"
+                            min={today}
+                            value={selectedTaskDate || ''}
+                            onChange={(e) => {
+                              setSelectedTaskDate(e.target.value || null)
+                              setShowTaskDatePicker(false)
+                            }}
+                            className="glass-recessed px-3 py-1.5 rounded-lg text-xs text-bone flex-1 focus:outline-none focus:ring-1 focus:ring-ember/50"
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
 
