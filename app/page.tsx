@@ -1100,7 +1100,7 @@ function WeightGoalModal({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -1110,7 +1110,7 @@ function WeightGoalModal({
             onClick={onClose}
           />
           <motion.div
-            className="glass-modal p-8 w-full max-w-md relative z-10"
+            className="glass-modal p-5 sm:p-8 w-full max-w-md relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -1209,7 +1209,7 @@ function CalorieGoalModal({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -1219,7 +1219,7 @@ function CalorieGoalModal({
             onClick={onClose}
           />
           <motion.div
-            className="glass-modal p-8 w-full max-w-md relative z-10"
+            className="glass-modal p-5 sm:p-8 w-full max-w-md relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -1328,7 +1328,7 @@ function WriteMessageModal({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -1338,7 +1338,7 @@ function WriteMessageModal({
             onClick={onClose}
           />
           <motion.div
-            className="glass-modal p-8 w-full max-w-lg relative z-10"
+            className="glass-modal p-5 sm:p-8 w-full max-w-lg relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -1515,7 +1515,7 @@ function HabitManagementModal({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -1712,7 +1712,7 @@ function BearingModal({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -1722,7 +1722,7 @@ function BearingModal({
             onClick={onClose}
           />
           <motion.div
-            className="glass-modal p-8 w-full max-w-lg relative z-10 max-h-[85vh] overflow-y-auto"
+            className="glass-modal p-5 sm:p-8 w-full max-w-lg relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -1953,7 +1953,7 @@ function TrueNorthModal({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -1963,7 +1963,7 @@ function TrueNorthModal({
             onClick={onClose}
           />
           <motion.div
-            className="glass-modal p-8 w-full max-w-lg relative z-10 max-h-[85vh] overflow-y-auto"
+            className="glass-modal p-5 sm:p-8 w-full max-w-lg relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -2211,7 +2211,7 @@ function WaypointModal({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -2221,7 +2221,7 @@ function WaypointModal({
             onClick={onClose}
           />
           <motion.div
-            className="glass-modal p-8 w-full max-w-md relative z-10"
+            className="glass-modal p-5 sm:p-8 w-full max-w-md relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -2458,7 +2458,7 @@ function QuickLogModal({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -2474,19 +2474,19 @@ function QuickLogModal({
 
           {/* Modal */}
           <motion.div
-            className="glass-modal p-8 w-full max-w-md relative z-10"
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            className="glass-modal p-5 sm:p-8 w-full max-w-md relative z-10 mx-2 sm:mx-0"
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            exit={{ scale: 0.95, opacity: 0, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
           >
-            <div className="flex justify-between items-center mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-ember/20 flex items-center justify-center">
-                  <IconComponent className="w-5 h-5 text-ember" />
+            <div className="flex justify-between items-center mb-4 sm:mb-6">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-ember/20 flex items-center justify-center">
+                  <IconComponent className="w-4 h-4 sm:w-5 sm:h-5 text-ember" />
                 </div>
                 <div>
-                  <h2 className="font-display text-xl font-semibold">{config[type].title}</h2>
+                  <h2 className="font-display text-lg sm:text-xl font-semibold">{config[type].title}</h2>
                   {supportsHistory && !isToday && (
                     <p className="text-xs text-fjord">Logging for {formatShortDate(selectedDate)}</p>
                   )}
@@ -3106,6 +3106,28 @@ export default function KnarrDashboard() {
     setToStorage(STORAGE_KEYS.tutorialComplete, true)
   }
 
+  // Sign out and reset all app state (for testing)
+  const handleSignOutAndReset = async () => {
+    // Clear all localStorage keys
+    Object.values(STORAGE_KEYS).forEach(key => {
+      localStorage.removeItem(key)
+    })
+
+    // Reset state
+    setHasCompletedOnboarding(false)
+    setShowOnboarding(true)
+    setShowTutorial(false)
+    setDevBypass(false)
+
+    // Sign out from Supabase if configured
+    if (isConfigured) {
+      await signOut()
+    }
+
+    // Reload to reset everything
+    window.location.reload()
+  }
+
   // Recent waypoints
   const recentWaypoints = [...waypoints]
     .sort((a, b) => new Date(b.achieved_date).getTime() - new Date(a.achieved_date).getTime())
@@ -3192,19 +3214,19 @@ export default function KnarrDashboard() {
       {/* Content */}
       <div className="relative z-[5]">
         {/* Header */}
-        <header className="page-header border-b border-white/5">
-          <div className="max-w-6xl mx-auto px-6 py-4">
-            <div className="flex items-center justify-between">
+        <header className="page-header border-b border-white/5 safe-area-top">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+            <div className="flex items-center justify-between gap-2">
               <motion.div
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 min-w-0"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <img src="/iconmain.png" alt="Knarr" className="h-11 w-auto" />
-                <div className="leading-tight">
-                  <h1 className="font-display text-2xl text-bone font-bold tracking-wide">Knarr</h1>
-                  <p className="text-fog text-sm -mt-0.5">{formatDate(new Date())}</p>
+                <img src="/iconmain.png" alt="Knarr" className="h-9 sm:h-11 w-auto flex-shrink-0" />
+                <div className="leading-tight min-w-0">
+                  <h1 className="font-display text-xl sm:text-2xl text-bone font-bold tracking-wide">Knarr</h1>
+                  <p className="text-fog text-xs sm:text-sm -mt-0.5 truncate">{formatDate(new Date())}</p>
                 </div>
               </motion.div>
 
@@ -3373,7 +3395,7 @@ export default function KnarrDashboard() {
               </motion.div>
 
               <motion.div
-                className="flex items-center gap-4"
+                className="flex items-center gap-2 sm:gap-4"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5 }}
@@ -3383,26 +3405,24 @@ export default function KnarrDashboard() {
                 </div>
                 <div id="tutorial-greeting" className="text-right hidden sm:block">
                   <p className="text-fog text-sm">{getGreeting()},</p>
-                  <p className="font-display text-lg text-bone font-semibold">
+                  <p className="font-display text-lg text-bone font-semibold truncate max-w-[120px]">
                     {user?.email?.split('@')[0] || userName}
                   </p>
                 </div>
-                {isConfigured && user && (
-                  <button
-                    onClick={() => signOut()}
-                    className="p-2 rounded-lg text-fog hover:text-bone hover:bg-white/5 transition-colors"
-                    title="Sign out"
-                  >
-                    <LogOut className="w-4 h-4" />
-                  </button>
-                )}
+                <button
+                  onClick={handleSignOutAndReset}
+                  className="p-2 rounded-lg text-fog hover:text-bone hover:bg-white/5 transition-colors"
+                  title="Sign out & reset"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
               </motion.div>
             </div>
           </div>
         </header>
 
-        <main className="max-w-6xl mx-auto px-6 py-4">
-          <div className="glass-main p-6">
+        <main className="max-w-6xl mx-auto px-3 sm:px-6 py-3 sm:py-4 safe-area-bottom">
+          <div className="glass-main p-4 sm:p-6">
           <AnimatePresence mode="wait">
           {mode === 'log' ? (
             /* ==================== LOG MODE ==================== */
@@ -3414,7 +3434,7 @@ export default function KnarrDashboard() {
               transition={{ duration: 0.3 }}
             >
               {/* Today's Heading */}
-              <div className="mb-6">
+              <div className="mb-4 sm:mb-6">
                 <h2 className="text-xs text-stone uppercase tracking-wider mb-2 flex items-center gap-2">
                   <Target className="w-3.5 h-3.5 text-ember" />
                   Today's Heading
@@ -3429,19 +3449,21 @@ export default function KnarrDashboard() {
               </div>
 
               {/* Quick Stats Row */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
                 {/* Calories Input */}
-                <div className="glass-recessed rounded-xl p-4">
+                <div className="glass-recessed rounded-xl p-3 sm:p-4">
                   <label className="text-xs text-stone uppercase tracking-wider mb-2 flex items-center gap-2">
                     <Flame className="w-3.5 h-3.5 text-ember" />
                     Calories
                   </label>
                   <input
                     type="number"
+                    inputMode="numeric"
                     value={todayCalories?.calories ?? ''}
                     onChange={(e) => e.target.value && handleLogCalories(e.target.value, today)}
                     placeholder="0"
-                    className="bg-transparent w-full font-mono text-2xl text-bone focus:outline-none"
+                    className="bg-transparent w-full font-mono text-xl sm:text-2xl text-bone focus:outline-none"
+                    style={{ fontSize: '16px' }}
                   />
                   {calorieGoal && (
                     <p className="text-xs text-stone mt-1">Goal: {calorieGoal.toLocaleString()}</p>
@@ -3449,18 +3471,20 @@ export default function KnarrDashboard() {
                 </div>
 
                 {/* Weight Input */}
-                <div className="glass-recessed rounded-xl p-4">
+                <div className="glass-recessed rounded-xl p-3 sm:p-4">
                   <label className="text-xs text-stone uppercase tracking-wider mb-2 flex items-center gap-2">
                     <Scale className="w-3.5 h-3.5 text-fjord" />
                     Weight (kg)
                   </label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     step="0.1"
                     value={todayWeight?.weight ?? ''}
                     onChange={(e) => e.target.value && handleLogWeight(e.target.value, today)}
                     placeholder="0.0"
-                    className="bg-transparent w-full font-mono text-2xl text-bone focus:outline-none"
+                    className="bg-transparent w-full font-mono text-xl sm:text-2xl text-bone focus:outline-none"
+                    style={{ fontSize: '16px' }}
                   />
                   {weightGoal && (
                     <p className="text-xs text-stone mt-1">Goal: {weightGoal} kg</p>
@@ -3468,22 +3492,22 @@ export default function KnarrDashboard() {
                 </div>
 
                 {/* Streak Display */}
-                <div className="glass-recessed rounded-xl p-4">
+                <div className="glass-recessed rounded-xl p-3 sm:p-4">
                   <label className="text-xs text-stone uppercase tracking-wider mb-2 flex items-center gap-2">
                     <TrendingUp className="w-3.5 h-3.5 text-victory-green" />
                     Streak
                   </label>
-                  <p className="font-mono text-2xl text-victory-green">{Math.max(calorieStreak, habitStreak)}</p>
+                  <p className="font-mono text-xl sm:text-2xl text-victory-green">{Math.max(calorieStreak, habitStreak)}</p>
                   <p className="text-xs text-stone mt-1">days</p>
                 </div>
 
                 {/* Habits Progress */}
-                <div className="glass-recessed rounded-xl p-4">
+                <div className="glass-recessed rounded-xl p-3 sm:p-4">
                   <label className="text-xs text-stone uppercase tracking-wider mb-2 flex items-center gap-2">
                     <CheckSquare className="w-3.5 h-3.5 text-victory-green" />
                     Habits
                   </label>
-                  <p className="font-mono text-2xl">
+                  <p className="font-mono text-xl sm:text-2xl">
                     <span className="text-victory-green">{completedHabits}</span>
                     <span className="text-stone">/{activeHabits.length}</span>
                   </p>
@@ -3636,52 +3660,52 @@ export default function KnarrDashboard() {
 
 
           {/* Stats Summary Row */}
-          <div id="tutorial-stats" className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-            <div className="glass-recessed rounded-xl p-3 text-center">
+          <div id="tutorial-stats" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <div className="glass-recessed rounded-xl p-2 sm:p-3 text-center">
               <p className="text-[10px] text-stone uppercase mb-1">Streak</p>
-              <p className="font-mono text-xl text-ember">{Math.max(calorieStreak, habitStreak)}</p>
+              <p className="font-mono text-lg sm:text-xl text-ember">{Math.max(calorieStreak, habitStreak)}</p>
               <p className="text-[10px] text-stone">days</p>
             </div>
-            <div className="glass-recessed rounded-xl p-3 text-center">
+            <div className="glass-recessed rounded-xl p-2 sm:p-3 text-center">
               <p className="text-[10px] text-stone uppercase mb-1">Calories</p>
-              <p className="font-mono text-xl text-bone">{todayCalories?.calories?.toLocaleString() ?? '--'}</p>
+              <p className="font-mono text-lg sm:text-xl text-bone">{todayCalories?.calories?.toLocaleString() ?? '--'}</p>
               <p className="text-[10px] text-stone">{calorieGoal ? `/ ${calorieGoal.toLocaleString()}` : 'today'}</p>
             </div>
-            <div className="glass-recessed rounded-xl p-3 text-center">
+            <div className="glass-recessed rounded-xl p-2 sm:p-3 text-center">
               <p className="text-[10px] text-stone uppercase mb-1">Weight</p>
-              <p className="font-mono text-xl text-bone">{latestWeight?.weight ?? '--'}</p>
+              <p className="font-mono text-lg sm:text-xl text-bone">{latestWeight?.weight ?? '--'}</p>
               <p className="text-[10px] text-stone">kg {weightTrend === 'down' ? '↓' : weightTrend === 'up' ? '↑' : ''}</p>
             </div>
-            <div className="glass-recessed rounded-xl p-3 text-center">
+            <div className="glass-recessed rounded-xl p-2 sm:p-3 text-center">
               <p className="text-[10px] text-stone uppercase mb-1">Habits</p>
-              <p className="font-mono text-xl">
+              <p className="font-mono text-lg sm:text-xl">
                 <span className="text-victory-green">{completedHabits}</span>
                 <span className="text-stone">/{activeHabits.length}</span>
               </p>
               <p className="text-[10px] text-stone">today</p>
             </div>
-            <div className="glass-recessed rounded-xl p-3 text-center col-span-2 lg:col-span-1">
+            <div className="glass-recessed rounded-xl p-2 sm:p-3 text-center col-span-2 sm:col-span-1">
               <p className="text-[10px] text-stone uppercase mb-1">7d Avg</p>
-              <p className="font-mono text-xl text-fjord">{rollingAverage ?? '--'}</p>
+              <p className="font-mono text-lg sm:text-xl text-fjord">{rollingAverage ?? '--'}</p>
               <p className="text-[10px] text-stone">kg</p>
             </div>
           </div>
 
           {/* Charts Grid */}
-          <div id="tutorial-charts" className="grid lg:grid-cols-2 gap-4 mb-4">
+          <div id="tutorial-charts" className="grid lg:grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
             {/* Weight Chart */}
-            <div className="glass p-4">
-              <WeightChart weights={weights} goal={weightGoal} onLoadSample={loadSampleWeightData} onLogWeight={() => { setMode('log') }} className="h-[200px]" />
+            <div className="glass p-3 sm:p-4">
+              <WeightChart weights={weights} goal={weightGoal} onLoadSample={loadSampleWeightData} onLogWeight={() => { setMode('log') }} className="h-[180px] sm:h-[200px]" />
             </div>
 
             {/* Calorie Chart */}
-            <div className="glass p-4">
+            <div className="glass p-3 sm:p-4">
               <CalorieChart calories={calories} goal={calorieGoal} />
             </div>
           </div>
 
           {/* Habit Chart */}
-          <div id="tutorial-habits" className="glass p-4 mb-4">
+          <div id="tutorial-habits" className="glass p-3 sm:p-4 mb-3 sm:mb-4">
             <HabitChart habitLogs={habitLogs} habits={habits} />
           </div>
 

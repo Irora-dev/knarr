@@ -688,3 +688,122 @@
     display: none;
   }
 }
+
+/* ============================================
+   MOBILE RESPONSIVE STYLES
+   ============================================ */
+
+/* Mobile-first adjustments */
+@media (max-width: 640px) {
+  /* Smaller padding on mobile */
+  .glass-main {
+    padding: 1rem;
+    border-radius: 16px;
+    margin: 0 -0.5rem;
+  }
+
+  /* Compact header on mobile */
+  .page-header {
+    padding: 0.75rem 0;
+  }
+
+  /* Smaller buttons on mobile */
+  .btn-primary {
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+  }
+
+  .btn-secondary {
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  /* Compact inputs on mobile */
+  .input {
+    padding: 0.625rem 0.875rem;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+
+  /* Full-width modals on mobile */
+  .glass-modal {
+    border-radius: 16px 16px 0 0;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  /* Smaller stat values on mobile */
+  .stat-value {
+    font-size: 1.5rem;
+  }
+
+  /* Compact direction cards */
+  .direction-card {
+    padding: 0.875rem;
+  }
+
+  /* Smaller compass watermark on mobile */
+  .compass-watermark {
+    width: 80vmin;
+    height: 80vmin;
+    opacity: 0.02;
+  }
+
+  /* Adjust chart heights on mobile */
+  .chart-container {
+    min-height: 160px;
+  }
+
+  /* Touch-friendly habit items */
+  .habit-item {
+    padding: 0.875rem;
+    min-height: 48px;
+  }
+
+  .habit-checkbox {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 641px) and (max-width: 1023px) {
+  .glass-main {
+    padding: 1.25rem;
+  }
+}
+
+/* Safe area insets for iOS */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Touch feedback for interactive elements */
+@media (hover: none) and (pointer: coarse) {
+  .glass:hover {
+    transform: none;
+  }
+
+  .direction-card:hover {
+    transform: none;
+  }
+
+  .direction-card:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+
+  .btn-primary:active,
+  .btn-secondary:active {
+    transform: scale(0.98);
+  }
+
+  .habit-item:active {
+    background: rgba(42, 42, 48, 0.6);
+  }
+}
