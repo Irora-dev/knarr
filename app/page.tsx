@@ -2666,6 +2666,23 @@ export default function KnarrDashboard() {
   const [showTaskDatePicker, setShowTaskDatePicker] = useState(false)
   const [selectedTaskDate, setSelectedTaskDate] = useState<string | null>(null)
 
+  // Chart filter state for View mode
+  const [visibleCharts, setVisibleCharts] = useState<Set<string>>(
+    new Set(['weight', 'calories', 'habits', 'tasks'])
+  )
+
+  const toggleChartVisibility = (chart: string) => {
+    setVisibleCharts(prev => {
+      const next = new Set(prev)
+      if (next.has(chart)) {
+        next.delete(chart)
+      } else {
+        next.add(chart)
+      }
+      return next
+    })
+  }
+
   // Auth and onboarding state
   const [devBypass, setDevBypass] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
@@ -3861,28 +3878,83 @@ export default function KnarrDashboard() {
             </div>
           </div>
 
-          {/* Weight Chart - Full Width */}
-          <div id="tutorial-charts" className="glass p-3 sm:p-4 mb-3 sm:mb-4">
-            <WeightChart weights={weights} goal={weightGoal} onLoadSample={loadSampleWeightData} onLogWeight={() => { setMode('log') }} className="h-[200px] sm:h-[250px]" />
+          {/* Chart Filter Buttons */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            <button
+              onClick={() => toggleChartVisibility('weight')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                visibleCharts.has('weight')
+                  ? 'bg-fjord/20 text-fjord border border-fjord/30'
+                  : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
+              }`}
+            >
+              <Scale className="w-3.5 h-3.5" />
+              Weight
+            </button>
+            <button
+              onClick={() => toggleChartVisibility('calories')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                visibleCharts.has('calories')
+                  ? 'bg-ember/20 text-ember border border-ember/30'
+                  : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
+              }`}
+            >
+              <Flame className="w-3.5 h-3.5" />
+              Calories
+            </button>
+            <button
+              onClick={() => toggleChartVisibility('habits')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                visibleCharts.has('habits')
+                  ? 'bg-victory-green/20 text-victory-green border border-victory-green/30'
+                  : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
+              }`}
+            >
+              <CheckSquare className="w-3.5 h-3.5" />
+              Habits
+            </button>
+            <button
+              onClick={() => toggleChartVisibility('tasks')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                visibleCharts.has('tasks')
+                  ? 'bg-ember/20 text-ember border border-ember/30'
+                  : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
+              }`}
+            >
+              <Target className="w-3.5 h-3.5" />
+              Tasks
+            </button>
           </div>
+
+          {/* Weight Chart - Full Width */}
+          {visibleCharts.has('weight') && (
+            <div id="tutorial-charts" className="glass p-3 sm:p-4 mb-3 sm:mb-4">
+              <WeightChart weights={weights} goal={weightGoal} onLoadSample={loadSampleWeightData} onLogWeight={() => { setMode('log') }} className="h-[200px] sm:h-[250px]" />
+            </div>
+          )}
 
           {/* Calorie Chart - Full Width */}
-          <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
-            <CalorieChart calories={calories} goal={calorieGoal} />
-          </div>
+          {visibleCharts.has('calories') && (
+            <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
+              <CalorieChart calories={calories} goal={calorieGoal} />
+            </div>
+          )}
 
           {/* Habit Chart - Full Width */}
-          <div id="tutorial-habits" className="glass p-3 sm:p-4 mb-3 sm:mb-4">
-            <HabitChart habitLogs={habitLogs} habits={habits} />
-          </div>
+          {visibleCharts.has('habits') && (
+            <div id="tutorial-habits" className="glass p-3 sm:p-4 mb-3 sm:mb-4">
+              <HabitChart habitLogs={habitLogs} habits={habits} />
+            </div>
+          )}
 
           {/* Task Manager Section */}
-          <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-display text-sm text-bone flex items-center gap-2">
-                <Target className="w-4 h-4 text-ember" />
-                Task Manager
-              </h3>
+          {visibleCharts.has('tasks') && (
+            <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-display text-sm text-bone flex items-center gap-2">
+                  <Target className="w-4 h-4 text-ember" />
+                  Task Manager
+                </h3>
               {completedTasks.length > 0 && (
                 <button
                   onClick={handleClearCompletedTasks}
@@ -3966,7 +4038,8 @@ export default function KnarrDashboard() {
                 No completed tasks yet. Complete tasks in Log mode!
               </p>
             )}
-          </div>
+            </div>
+          )}
 
           {/* Insights Section */}
           <section id="tutorial-insights" className="max-w-2xl">
