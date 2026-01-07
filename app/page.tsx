@@ -2722,12 +2722,6 @@ export default function KnarrDashboard() {
       position: 'top'
     },
     {
-      target: '#tutorial-insights',
-      title: 'Insights',
-      description: 'Get personalised insights based on your data. Knarr analyses patterns and correlations to help you understand what works.',
-      position: 'top'
-    },
-    {
       target: '',
       title: 'Ready to Begin',
       description: 'Switch to Log mode to start tracking your daily progress. Your voyage starts now!',
@@ -2795,6 +2789,59 @@ export default function KnarrDashboard() {
       const dateB = b.completed_at ? new Date(b.completed_at).getTime() : 0
       return dateB - dateA
     })
+
+  // Top insight calculation (single line)
+  const topInsight = (() => {
+    const sortedWeights = [...weights].sort((a, b) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    )
+    const sortedCalories = [...calories].sort((a, b) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    )
+
+    // Weight trend
+    if (sortedWeights.length >= 14) {
+      const recentWeek = sortedWeights.slice(0, 7)
+      const previousWeek = sortedWeights.slice(7, 14)
+      const avgRecent = recentWeek.reduce((sum, w) => sum + w.weight, 0) / recentWeek.length
+      const avgPrevious = previousWeek.reduce((sum, w) => sum + w.weight, 0) / previousWeek.length
+      const diff = avgRecent - avgPrevious
+      if (Math.abs(diff) >= 0.3) {
+        return { icon: diff < 0 ? '📉' : '📈', text: `Weight ${diff < 0 ? 'down' : 'up'} ${Math.abs(diff).toFixed(1)}kg vs last week` }
+      }
+    }
+
+    // Calorie consistency
+    if (sortedCalories.length >= 5 && calorieGoal) {
+      const recent = sortedCalories.slice(0, 7)
+      const daysOnTarget = recent.filter(c => Math.abs(c.calories - calorieGoal) <= calorieGoal * 0.1).length
+      if (daysOnTarget >= 5) return { icon: '🎯', text: `${daysOnTarget}/7 days within calorie target` }
+    }
+
+    // Habit consistency
+    if (habitLogs.length >= 14 && activeHabits.length > 0) {
+      const uniqueDates = [...new Set(habitLogs.map(l => l.date))].slice(-14)
+      const highDays = uniqueDates.filter(date => {
+        const dayLogs = habitLogs.filter(l => l.date === date && l.completed)
+        return dayLogs.length >= activeHabits.length * 0.8
+      })
+      if (highDays.length >= 10) return { icon: '🔥', text: 'Strong habit consistency - 80%+ completion' }
+    }
+
+    // Streak
+    const uniqueCalorieDates = new Set(calories.map(c => c.date))
+    let streak = 0
+    for (let i = 0; i < 30; i++) {
+      const checkDate = new Date()
+      checkDate.setDate(checkDate.getDate() - i)
+      const dateStr = checkDate.toISOString().split('T')[0]
+      if (uniqueCalorieDates.has(dateStr!)) streak++
+      else if (i > 0) break
+    }
+    if (streak >= 7) return { icon: '🏆', text: `${streak} day logging streak!` }
+
+    return null
+  })()
 
   // Weight calculations
   const latestWeight = weights.length > 0
@@ -3878,6 +3925,14 @@ export default function KnarrDashboard() {
             </div>
           </div>
 
+          {/* Single Line Insight */}
+          {topInsight && (
+            <div className="flex items-center gap-2 mb-3 px-1">
+              <span className="text-base">{topInsight.icon}</span>
+              <span className="text-sm text-fog">{topInsight.text}</span>
+            </div>
+          )}
+
           {/* Chart Filter Buttons */}
           <div className="flex flex-wrap gap-2 mb-4">
             <button
@@ -4040,25 +4095,6 @@ export default function KnarrDashboard() {
             )}
             </div>
           )}
-
-          {/* Insights Section */}
-          <section id="tutorial-insights" className="max-w-2xl">
-            {/* Insights Card */}
-            <DirectionCard title="Insights" icon={TrendingUp} delay={0.25}>
-              <div className="space-y-4">
-                <p className="text-fog text-sm">
-                  Patterns and correlations from your data.
-                </p>
-                <InsightsCard
-                  calories={calories}
-                  weights={weights}
-                  habitLogs={habitLogs}
-                  habits={habits}
-                  calorieGoal={calorieGoal}
-                />
-              </div>
-            </DirectionCard>
-          </section>
             </motion.div>
           )}
           </AnimatePresence>
