@@ -398,7 +398,7 @@ function WeightChart({
 
   if (!weights || weights.length < 2) {
     return (
-      <div className={`weight-chart-empty min-h-[160px] flex items-center justify-center ${className ?? ''}`}>
+      <div className={`weight-chart-empty h-full flex items-center justify-center ${className ?? ''}`}>
         <div className="flex flex-col items-center justify-center text-center p-4">
           <Navigation className="w-6 h-6 text-stone mb-2 opacity-50" />
           <p className="text-fog text-sm">Log at least 2 weight entries</p>
@@ -447,9 +447,9 @@ function WeightChart({
   const yMax = Math.ceil(maxVal + padding)
 
   return (
-    <div className={`weight-chart ${className ?? ''}`}>
+    <div className={`weight-chart h-full flex flex-col ${className ?? ''}`}>
       {/* Chart Header */}
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-2 flex-shrink-0">
         <div className="flex items-center gap-2">
           <Navigation className="w-3.5 h-3.5 text-fjord" />
           <span className="text-[10px] text-fog uppercase">Weight</span>
@@ -476,9 +476,9 @@ function WeightChart({
       </div>
 
       {/* Chart */}
-      <div className="chart-container">
+      <div className="chart-container flex-1 min-h-0">
         {chartMounted ? (
-        <ResponsiveContainer width="100%" height={150}>
+        <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={displayData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             {/* Nautical grid pattern */}
             <defs>
@@ -587,7 +587,7 @@ function CalorieChart({
 
   if (!calories || calories.length < 2) {
     return (
-      <div className={`weight-chart-empty min-h-[200px] flex items-center justify-center ${className ?? ''}`}>
+      <div className={`weight-chart-empty h-full flex items-center justify-center ${className ?? ''}`}>
         <div className="flex flex-col items-center justify-center text-center p-6">
           <Flame className="w-8 h-8 text-stone mb-3 opacity-50" />
           <p className="text-fog text-sm">Log at least 2 days of calories</p>
@@ -628,8 +628,8 @@ function CalorieChart({
   const yMax = Math.ceil((maxVal + padding) / 100) * 100
 
   return (
-    <div className={`weight-chart ${className ?? ''}`}>
-      <div className="flex items-center justify-between mb-4">
+    <div className={`weight-chart h-full flex flex-col ${className ?? ''}`}>
+      <div className="flex items-center justify-between mb-4 flex-shrink-0">
         <div className="flex items-center gap-2">
           <Flame className="w-4 h-4 text-ember" />
           <span className="text-caption text-fog">CALORIE LOG</span>
@@ -652,9 +652,9 @@ function CalorieChart({
         </div>
       </div>
 
-      <div className="chart-container">
+      <div className="chart-container flex-1 min-h-0">
         {chartMounted ? (
-          <ResponsiveContainer width="100%" height={180}>
+          <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={displayData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="calorieGradient" x1="0" y1="0" x2="0" y2="1">
@@ -961,7 +961,7 @@ function HabitChart({
 
   if (uniqueDates.length < 2 || activeHabits.length === 0) {
     return (
-      <div className={`weight-chart-empty min-h-[200px] flex items-center justify-center ${className ?? ''}`}>
+      <div className={`weight-chart-empty h-full flex items-center justify-center ${className ?? ''}`}>
         <div className="flex flex-col items-center justify-center text-center p-6">
           <CheckSquare className="w-8 h-8 text-stone mb-3 opacity-50" />
           <p className="text-fog text-sm">Track habits for at least 2 days</p>
@@ -987,8 +987,8 @@ function HabitChart({
   })
 
   return (
-    <div className={`weight-chart ${className ?? ''}`}>
-      <div className="flex items-center justify-between mb-4">
+    <div className={`weight-chart h-full flex flex-col ${className ?? ''}`}>
+      <div className="flex items-center justify-between mb-4 flex-shrink-0">
         <div className="flex items-center gap-2">
           <CheckSquare className="w-4 h-4 text-victory-green" />
           <span className="text-caption text-fog">HABIT COMPLETION</span>
@@ -998,9 +998,9 @@ function HabitChart({
         </div>
       </div>
 
-      <div className="chart-container">
+      <div className="chart-container flex-1 min-h-0">
         {chartMounted ? (
-          <ResponsiveContainer width="100%" height={180}>
+          <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="habitGradient" x1="0" y1="0" x2="0" y2="1">
@@ -4135,21 +4135,21 @@ export default function KnarrDashboard() {
 
           {/* Weight Chart - Full Width */}
           {(activeChart === null || activeChart === 'weight') && (
-            <div id="tutorial-charts" className="glass p-3 sm:p-4 mb-3 sm:mb-4">
-              <WeightChart weights={weights} goal={weightGoal} onLoadSample={loadSampleWeightData} onLogWeight={() => { setMode('log') }} className="h-[200px] sm:h-[250px]" />
+            <div id="tutorial-charts" className="glass p-3 sm:p-4 mb-3 sm:mb-4 h-[240px] sm:h-[280px]">
+              <WeightChart weights={weights} goal={weightGoal} onLoadSample={loadSampleWeightData} onLogWeight={() => { setMode('log') }} />
             </div>
           )}
 
           {/* Calorie Chart - Full Width */}
           {(activeChart === null || activeChart === 'calories') && (
-            <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
+            <div className="glass p-3 sm:p-4 mb-3 sm:mb-4 h-[240px] sm:h-[280px]">
               <CalorieChart calories={calories} goal={calorieGoal} />
             </div>
           )}
 
           {/* Habit Chart - Full Width */}
           {(activeChart === null || activeChart === 'habits') && (
-            <div id="tutorial-habits" className="glass p-3 sm:p-4 mb-3 sm:mb-4">
+            <div id="tutorial-habits" className="glass p-3 sm:p-4 mb-3 sm:mb-4 h-[240px] sm:h-[280px]">
               <HabitChart habitLogs={habitLogs} habits={habits} />
             </div>
           )}
