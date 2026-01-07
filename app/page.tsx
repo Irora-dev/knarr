@@ -1431,6 +1431,107 @@ function WriteMessageModal({
   )
 }
 
+// Message Delivery Popup Component
+function MessageDeliveryModal({
+  isOpen,
+  message,
+  onClose,
+  onMarkRead,
+  unreadCount
+}: {
+  isOpen: boolean
+  message: Message | null
+  onClose: () => void
+  onMarkRead: (id: string) => void
+  unreadCount: number
+}) {
+  if (!message) return null
+
+  const moodEmojis: Record<string, string> = {
+    hopeful: '🌅',
+    grateful: '🙏',
+    determined: '⚔️',
+    reflective: '🌊',
+  }
+
+  const moodLabels: Record<string, string> = {
+    hopeful: 'Hopeful',
+    grateful: 'Grateful',
+    determined: 'Determined',
+    reflective: 'Reflective',
+  }
+
+  const createdDate = new Date(message.created_at)
+  const deliveredDate = new Date(message.deliver_at)
+  const daysInTransit = Math.floor((deliveredDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24))
+
+  const handleClose = () => {
+    onMarkRead(message.id)
+    onClose()
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="absolute inset-0 bg-forge-black/80 backdrop-blur-md"
+            onClick={handleClose}
+          />
+          <motion.div
+            className="relative z-10 w-full max-w-md"
+            initial={{ scale: 0.8, opacity: 0, y: 50 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.8, opacity: 0, y: 50 }}
+            transition={{ type: 'spring', damping: 20, stiffness: 200 }}
+          >
+            {/* Floating bottle animation */}
+            <motion.div
+              className="flex justify-center mb-4"
+              animate={{ y: [0, -8, 0] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-fjord/30 to-fjord/10 flex items-center justify-center border border-fjord/30 shadow-lg shadow-fjord/20">
+                <Mail className="w-10 h-10 text-fjord" />
+              </div>
+            </motion.div>
+
+            <div className="glass-modal p-6 rounded-2xl text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <span className="text-2xl">{message.mood ? moodEmojis[message.mood] : '📜'}</span>
+                <h2 className="font-display text-xl text-bone">Message Arrived</h2>
+              </div>
+
+              <p className="text-sm text-stone mb-4">
+                Sent {daysInTransit} {daysInTransit === 1 ? 'day' : 'days'} ago
+                {message.mood && ` • Feeling ${moodLabels[message.mood]?.toLowerCase()}`}
+              </p>
+
+              <div className="glass-recessed p-4 rounded-lg mb-4 text-left">
+                <p className="text-fog leading-relaxed italic">"{message.content}"</p>
+              </div>
+
+              <p className="text-xs text-stone mb-4">— You, from the past</p>
+
+              <button
+                onClick={handleClose}
+                className="btn-primary w-full"
+              >
+                {unreadCount > 1 ? `Continue (${unreadCount - 1} more)` : 'Close'}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
 // Message Card Component
 function MessageCard({
   message,
@@ -2657,6 +2758,11 @@ export default function KnarrDashboard() {
   const [waypoints, setWaypoints] = useState<Waypoint[]>([])
   const [showWaypointModal, setShowWaypointModal] = useState(false)
 
+  // Message delivery popup state
+  const [showMessagePopup, setShowMessagePopup] = useState(false)
+  const [currentDeliveredMessage, setCurrentDeliveredMessage] = useState<Message | null>(null)
+  const [hasCheckedMessages, setHasCheckedMessages] = useState(false)
+
   // Inline edit state for header stats
   const [editingStat, setEditingStat] = useState<'calories' | 'weight' | 'heading' | null>(null)
   const [editValue, setEditValue] = useState('')
@@ -2666,21 +2772,11 @@ export default function KnarrDashboard() {
   const [showTaskDatePicker, setShowTaskDatePicker] = useState(false)
   const [selectedTaskDate, setSelectedTaskDate] = useState<string | null>(null)
 
-  // Chart filter state for View mode
-  const [visibleCharts, setVisibleCharts] = useState<Set<string>>(
-    new Set(['weight', 'calories', 'habits', 'tasks'])
-  )
+  // Chart filter state for View mode - single select toggle (null = show all)
+  const [activeChart, setActiveChart] = useState<string | null>(null)
 
-  const toggleChartVisibility = (chart: string) => {
-    setVisibleCharts(prev => {
-      const next = new Set(prev)
-      if (next.has(chart)) {
-        next.delete(chart)
-      } else {
-        next.add(chart)
-      }
-      return next
-    })
+  const toggleChartFilter = (chart: string) => {
+    setActiveChart(prev => prev === chart ? null : chart)
   }
 
   // Auth and onboarding state
@@ -2762,6 +2858,22 @@ export default function KnarrDashboard() {
     setLifeGoals(getFromStorage(STORAGE_KEYS.lifeGoals, []))
     setWaypoints(getFromStorage(STORAGE_KEYS.waypoints, []))
   }, [])
+
+  // Check for delivered messages on load
+  useEffect(() => {
+    if (hasCheckedMessages || messages.length === 0) return
+
+    // Find unread messages that have arrived
+    const unreadArrived = messages.filter(m => !m.read && m.deliver_at <= today)
+
+    if (unreadArrived.length > 0) {
+      // Show the first unread message
+      setCurrentDeliveredMessage(unreadArrived[0]!)
+      setShowMessagePopup(true)
+    }
+
+    setHasCheckedMessages(true)
+  }, [messages, today, hasCheckedMessages])
 
   // Today's data
   const todayCalories = calories.find(c => c.date === today)
@@ -3020,6 +3132,22 @@ export default function KnarrDashboard() {
     )
     setMessages(updated)
     setToStorage(STORAGE_KEYS.messages, updated)
+  }
+
+  const handleCloseMessagePopup = () => {
+    // Find remaining unread arrived messages
+    const remaining = messages.filter(m =>
+      !m.read && m.deliver_at <= today && m.id !== currentDeliveredMessage?.id
+    )
+
+    if (remaining.length > 0) {
+      // Show the next message
+      setCurrentDeliveredMessage(remaining[0]!)
+    } else {
+      // No more messages, close popup
+      setShowMessagePopup(false)
+      setCurrentDeliveredMessage(null)
+    }
   }
 
   const handleAddHabit = (name: string) => {
@@ -3949,47 +4077,55 @@ export default function KnarrDashboard() {
             <span className="text-sm text-fog">{topInsight?.text || 'Keep logging to unlock insights about your patterns'}</span>
           </div>
 
-          {/* Chart Filter Buttons */}
+          {/* Chart Filter Buttons - Single Select Toggle */}
           <div className="flex flex-wrap gap-2 mb-4">
             <button
-              onClick={() => toggleChartVisibility('weight')}
+              onClick={() => toggleChartFilter('weight')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
-                visibleCharts.has('weight')
+                activeChart === 'weight'
                   ? 'bg-fjord/20 text-fjord border border-fjord/30'
-                  : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
+                  : activeChart === null
+                    ? 'bg-fjord/10 text-fjord/70 border border-fjord/20'
+                    : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
               }`}
             >
               <Scale className="w-3.5 h-3.5" />
               Weight
             </button>
             <button
-              onClick={() => toggleChartVisibility('calories')}
+              onClick={() => toggleChartFilter('calories')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
-                visibleCharts.has('calories')
+                activeChart === 'calories'
                   ? 'bg-ember/20 text-ember border border-ember/30'
-                  : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
+                  : activeChart === null
+                    ? 'bg-ember/10 text-ember/70 border border-ember/20'
+                    : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
               }`}
             >
               <Flame className="w-3.5 h-3.5" />
               Calories
             </button>
             <button
-              onClick={() => toggleChartVisibility('habits')}
+              onClick={() => toggleChartFilter('habits')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
-                visibleCharts.has('habits')
+                activeChart === 'habits'
                   ? 'bg-victory-green/20 text-victory-green border border-victory-green/30'
-                  : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
+                  : activeChart === null
+                    ? 'bg-victory-green/10 text-victory-green/70 border border-victory-green/20'
+                    : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
               }`}
             >
               <CheckSquare className="w-3.5 h-3.5" />
               Habits
             </button>
             <button
-              onClick={() => toggleChartVisibility('tasks')}
+              onClick={() => toggleChartFilter('tasks')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
-                visibleCharts.has('tasks')
+                activeChart === 'tasks'
                   ? 'bg-ember/20 text-ember border border-ember/30'
-                  : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
+                  : activeChart === null
+                    ? 'bg-ember/10 text-ember/70 border border-ember/20'
+                    : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
               }`}
             >
               <Target className="w-3.5 h-3.5" />
@@ -3998,28 +4134,28 @@ export default function KnarrDashboard() {
           </div>
 
           {/* Weight Chart - Full Width */}
-          {visibleCharts.has('weight') && (
+          {(activeChart === null || activeChart === 'weight') && (
             <div id="tutorial-charts" className="glass p-3 sm:p-4 mb-3 sm:mb-4">
               <WeightChart weights={weights} goal={weightGoal} onLoadSample={loadSampleWeightData} onLogWeight={() => { setMode('log') }} className="h-[200px] sm:h-[250px]" />
             </div>
           )}
 
           {/* Calorie Chart - Full Width */}
-          {visibleCharts.has('calories') && (
+          {(activeChart === null || activeChart === 'calories') && (
             <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
               <CalorieChart calories={calories} goal={calorieGoal} />
             </div>
           )}
 
           {/* Habit Chart - Full Width */}
-          {visibleCharts.has('habits') && (
+          {(activeChart === null || activeChart === 'habits') && (
             <div id="tutorial-habits" className="glass p-3 sm:p-4 mb-3 sm:mb-4">
               <HabitChart habitLogs={habitLogs} habits={habits} />
             </div>
           )}
 
           {/* Task Manager Section */}
-          {visibleCharts.has('tasks') && (
+          {(activeChart === null || activeChart === 'tasks') && (
             <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display text-sm text-bone flex items-center gap-2">
@@ -4186,6 +4322,13 @@ export default function KnarrDashboard() {
         onClose={() => setShowWaypointModal(false)}
         onSubmit={handleAddWaypoint}
         lifeGoals={lifeGoals}
+      />
+      <MessageDeliveryModal
+        isOpen={showMessagePopup}
+        message={currentDeliveredMessage}
+        onClose={handleCloseMessagePopup}
+        onMarkRead={handleMarkMessageRead}
+        unreadCount={unreadMessages.length}
       />
     </div>
   )
