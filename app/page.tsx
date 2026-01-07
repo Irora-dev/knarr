@@ -3230,170 +3230,6 @@ export default function KnarrDashboard() {
                 </div>
               </motion.div>
 
-              {/* Steady Course Stats in Header - Clickable/Editable */}
-              <motion.div
-                className="hidden lg:flex items-center gap-3"
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.15 }}
-              >
-                {/* Streak (read-only) */}
-                <div className="glass-recessed px-4 py-2 rounded-xl flex flex-col items-center gap-0.5 min-w-[90px]">
-                  <div className="flex items-center gap-1.5">
-                    <Target className="w-3.5 h-3.5 text-ember" />
-                    <span className="font-mono text-base text-ember font-semibold">{Math.max(calorieStreak, habitStreak)}</span>
-                  </div>
-                  <span className="text-[10px] text-stone">streak</span>
-                </div>
-
-                {/* Calories (editable) */}
-                {editingStat === 'calories' ? (
-                  <div className="glass-recessed px-3 py-2 rounded-xl flex items-center gap-2 min-w-[100px] ring-1 ring-ember/50">
-                    <Flame className="w-3.5 h-3.5 text-ember" />
-                    <input
-                      type="number"
-                      autoFocus
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && editValue) {
-                          handleLogCalories(editValue, today)
-                          setEditingStat(null)
-                          setEditValue('')
-                        } else if (e.key === 'Escape') {
-                          setEditingStat(null)
-                          setEditValue('')
-                        }
-                      }}
-                      onBlur={() => {
-                        if (editValue) handleLogCalories(editValue, today)
-                        setEditingStat(null)
-                        setEditValue('')
-                      }}
-                      className="bg-transparent text-bone font-mono text-base font-semibold w-16 focus:outline-none"
-                      placeholder="kcal"
-                    />
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setEditingStat('calories')
-                      setEditValue(todayCalories ? String(todayCalories.calories) : '')
-                    }}
-                    className="glass-recessed px-4 py-2 rounded-xl flex flex-col items-center gap-0.5 min-w-[90px] hover:bg-white/5 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <Flame className="w-3.5 h-3.5 text-ember" />
-                      <span className="font-mono text-base text-bone font-semibold">{todayCalories ? todayCalories.calories.toLocaleString() : '--'}</span>
-                    </div>
-                    <span className="text-[10px] text-stone">kcal</span>
-                  </button>
-                )}
-
-                {/* Weight (editable) */}
-                {editingStat === 'weight' ? (
-                  <div className="glass-recessed px-3 py-2 rounded-xl flex items-center gap-2 min-w-[90px] ring-1 ring-fjord/50">
-                    <Scale className="w-3.5 h-3.5 text-fjord" />
-                    <input
-                      type="number"
-                      step="0.1"
-                      autoFocus
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && editValue) {
-                          handleLogWeight(editValue, today)
-                          setEditingStat(null)
-                          setEditValue('')
-                        } else if (e.key === 'Escape') {
-                          setEditingStat(null)
-                          setEditValue('')
-                        }
-                      }}
-                      onBlur={() => {
-                        if (editValue) handleLogWeight(editValue, today)
-                        setEditingStat(null)
-                        setEditValue('')
-                      }}
-                      className="bg-transparent text-bone font-mono text-base font-semibold w-14 focus:outline-none"
-                      placeholder="kg"
-                    />
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setEditingStat('weight')
-                      setEditValue(latestWeight ? String(latestWeight.weight) : '')
-                    }}
-                    className="glass-recessed px-4 py-2 rounded-xl flex flex-col items-center gap-0.5 min-w-[90px] hover:bg-white/5 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <Scale className="w-3.5 h-3.5 text-fjord" />
-                      <span className="font-mono text-base text-bone font-semibold">{latestWeight ? latestWeight.weight : '--'}</span>
-                    </div>
-                    <span className="text-[10px] text-stone">kg</span>
-                  </button>
-                )}
-
-                {/* Habits (read-only, shows count) */}
-                <div className="glass-recessed px-4 py-2 rounded-xl flex flex-col items-center gap-0.5 min-w-[90px]">
-                  <div className="flex items-center gap-1.5">
-                    <CheckSquare className="w-3.5 h-3.5 text-victory-green" />
-                    <span className="font-mono text-base font-semibold">
-                      <span className="text-victory-green">{completedHabits}</span>
-                      <span className="text-stone">/{activeHabits.length}</span>
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-stone">habits</span>
-                </div>
-
-                {/* Heading (editable) */}
-                {editingStat === 'heading' ? (
-                  <div className="glass-recessed px-3 py-2 rounded-xl flex items-center gap-2 min-w-[100px] ring-1 ring-ember/50">
-                    <Navigation className="w-3.5 h-3.5 text-ember shrink-0" />
-                    <input
-                      type="text"
-                      autoFocus
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && editValue) {
-                          handleSetHeading(editValue, today)
-                          setEditingStat(null)
-                          setEditValue('')
-                        } else if (e.key === 'Escape') {
-                          setEditingStat(null)
-                          setEditValue('')
-                        }
-                      }}
-                      onBlur={() => {
-                        if (editValue) handleSetHeading(editValue, today)
-                        setEditingStat(null)
-                        setEditValue('')
-                      }}
-                      className="bg-transparent text-bone text-sm w-24 focus:outline-none"
-                      placeholder="Focus..."
-                    />
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setEditingStat('heading')
-                      setEditValue(todayHeading ? todayHeading.intention : '')
-                    }}
-                    className="glass-recessed px-4 py-2 rounded-xl flex flex-col items-center gap-0.5 min-w-[90px] hover:bg-white/5 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <Navigation className="w-3.5 h-3.5 text-ember" />
-                      <span className="font-mono text-base text-bone font-semibold truncate max-w-[60px]">
-                        {todayHeading ? '✓' : '--'}
-                      </span>
-                    </div>
-                    <span className="text-[10px] text-stone">heading</span>
-                  </button>
-                )}
-              </motion.div>
-
               <motion.div
                 className="flex items-center gap-2 sm:gap-4"
                 initial={{ opacity: 0, x: 20 }}
@@ -3659,52 +3495,99 @@ export default function KnarrDashboard() {
           )}
 
 
-          {/* Stats Summary Row */}
-          <div id="tutorial-stats" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3 mb-3 sm:mb-4">
-            <div className="glass-recessed rounded-xl p-2 sm:p-3 text-center">
-              <p className="text-[10px] text-stone uppercase mb-1">Streak</p>
-              <p className="font-mono text-lg sm:text-xl text-ember">{Math.max(calorieStreak, habitStreak)}</p>
-              <p className="text-[10px] text-stone">days</p>
-            </div>
-            <div className="glass-recessed rounded-xl p-2 sm:p-3 text-center">
-              <p className="text-[10px] text-stone uppercase mb-1">Calories</p>
-              <p className="font-mono text-lg sm:text-xl text-bone">{todayCalories?.calories?.toLocaleString() ?? '--'}</p>
-              <p className="text-[10px] text-stone">{calorieGoal ? `/ ${calorieGoal.toLocaleString()}` : 'today'}</p>
-            </div>
-            <div className="glass-recessed rounded-xl p-2 sm:p-3 text-center">
-              <p className="text-[10px] text-stone uppercase mb-1">Weight</p>
-              <p className="font-mono text-lg sm:text-xl text-bone">{latestWeight?.weight ?? '--'}</p>
-              <p className="text-[10px] text-stone">kg {weightTrend === 'down' ? '↓' : weightTrend === 'up' ? '↑' : ''}</p>
-            </div>
-            <div className="glass-recessed rounded-xl p-2 sm:p-3 text-center">
-              <p className="text-[10px] text-stone uppercase mb-1">Habits</p>
-              <p className="font-mono text-lg sm:text-xl">
-                <span className="text-victory-green">{completedHabits}</span>
-                <span className="text-stone">/{activeHabits.length}</span>
-              </p>
-              <p className="text-[10px] text-stone">today</p>
-            </div>
-            <div className="glass-recessed rounded-xl p-2 sm:p-3 text-center col-span-2 sm:col-span-1">
-              <p className="text-[10px] text-stone uppercase mb-1">7d Avg</p>
-              <p className="font-mono text-lg sm:text-xl text-fjord">{rollingAverage ?? '--'}</p>
-              <p className="text-[10px] text-stone">kg</p>
+          {/* Stats at a Glance */}
+          <div id="tutorial-stats" className="mb-4 sm:mb-6">
+            <h2 className="text-xs text-stone uppercase tracking-wider mb-3 flex items-center gap-2">
+              <CompassIcon className="w-3.5 h-3.5 text-ember" />
+              Stats at a Glance
+            </h2>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+              {/* Streak Card */}
+              <div className="glass-recessed rounded-xl p-3 sm:p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] text-stone uppercase">Streak</span>
+                  <Target className="w-3.5 h-3.5 text-ember" />
+                </div>
+                <p className="font-mono text-2xl sm:text-3xl text-ember font-semibold">{Math.max(calorieStreak, habitStreak)}</p>
+                <p className="text-xs text-stone">consecutive days</p>
+              </div>
+
+              {/* Calories Card with mini progress */}
+              <div className="glass-recessed rounded-xl p-3 sm:p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] text-stone uppercase">Calories</span>
+                  <Flame className="w-3.5 h-3.5 text-ember" />
+                </div>
+                <p className="font-mono text-2xl sm:text-3xl text-bone font-semibold">{todayCalories?.calories?.toLocaleString() ?? '--'}</p>
+                {calorieGoal && (
+                  <div className="mt-2">
+                    <div className="h-1.5 bg-iron-slate/50 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-ember rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(100, ((todayCalories?.calories ?? 0) / calorieGoal) * 100)}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-stone mt-1">of {calorieGoal.toLocaleString()} goal</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Weight Card with trend */}
+              <div className="glass-recessed rounded-xl p-3 sm:p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] text-stone uppercase">Weight</span>
+                  <Scale className="w-3.5 h-3.5 text-fjord" />
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <p className="font-mono text-2xl sm:text-3xl text-bone font-semibold">{latestWeight?.weight ?? '--'}</p>
+                  <span className="text-sm text-stone">kg</span>
+                  {weightTrend && (
+                    <span className={`text-sm ${weightTrend === 'down' ? 'text-victory-green' : weightTrend === 'up' ? 'text-ember' : 'text-stone'}`}>
+                      {weightTrend === 'down' ? '↓' : weightTrend === 'up' ? '↑' : '→'}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-stone mt-1">7d avg: {rollingAverage ?? '--'} kg</p>
+              </div>
+
+              {/* Habits Card with progress ring */}
+              <div className="glass-recessed rounded-xl p-3 sm:p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] text-stone uppercase">Habits</span>
+                  <CheckSquare className="w-3.5 h-3.5 text-victory-green" />
+                </div>
+                <div className="flex items-center gap-3">
+                  <p className="font-mono text-2xl sm:text-3xl font-semibold">
+                    <span className="text-victory-green">{completedHabits}</span>
+                    <span className="text-stone text-lg">/{activeHabits.length}</span>
+                  </p>
+                  {activeHabits.length > 0 && (
+                    <div className="flex-1">
+                      <div className="h-1.5 bg-iron-slate/50 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-victory-green rounded-full transition-all duration-500"
+                          style={{ width: `${(completedHabits / activeHabits.length) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-stone mt-1">completed today</p>
+              </div>
             </div>
           </div>
 
-          {/* Charts Grid */}
-          <div id="tutorial-charts" className="grid lg:grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
-            {/* Weight Chart */}
-            <div className="glass p-3 sm:p-4">
-              <WeightChart weights={weights} goal={weightGoal} onLoadSample={loadSampleWeightData} onLogWeight={() => { setMode('log') }} className="h-[180px] sm:h-[200px]" />
-            </div>
-
-            {/* Calorie Chart */}
-            <div className="glass p-3 sm:p-4">
-              <CalorieChart calories={calories} goal={calorieGoal} />
-            </div>
+          {/* Weight Chart - Full Width */}
+          <div id="tutorial-charts" className="glass p-3 sm:p-4 mb-3 sm:mb-4">
+            <WeightChart weights={weights} goal={weightGoal} onLoadSample={loadSampleWeightData} onLogWeight={() => { setMode('log') }} className="h-[200px] sm:h-[250px]" />
           </div>
 
-          {/* Habit Chart */}
+          {/* Calorie Chart - Full Width */}
+          <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
+            <CalorieChart calories={calories} goal={calorieGoal} />
+          </div>
+
+          {/* Habit Chart - Full Width */}
           <div id="tutorial-habits" className="glass p-3 sm:p-4 mb-3 sm:mb-4">
             <HabitChart habitLogs={habitLogs} habits={habits} />
           </div>
