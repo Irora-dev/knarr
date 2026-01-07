@@ -2770,6 +2770,15 @@ export default function KnarrDashboard() {
     !t.completed && t.scheduled_date && t.scheduled_date > today
   )
 
+  // Completed tasks: sorted by completion date (most recent first)
+  const completedTasks = tasks
+    .filter(t => t.completed)
+    .sort((a, b) => {
+      const dateA = a.completed_at ? new Date(a.completed_at).getTime() : 0
+      const dateB = b.completed_at ? new Date(b.completed_at).getTime() : 0
+      return dateB - dateA
+    })
+
   // Weight calculations
   const latestWeight = weights.length > 0
     ? [...weights].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
@@ -2987,29 +2996,31 @@ export default function KnarrDashboard() {
     // Add to completing set for animation
     setCompletingTaskIds(prev => new Set(prev).add(id))
 
-    // Mark as completed
+    // Mark as completed with timestamp
     const updated = tasks.map(t =>
       t.id === id ? { ...t, completed: true, completed_at: new Date().toISOString() } : t
     )
     setTasks(updated)
     setToStorage(STORAGE_KEYS.tasks, updated)
 
-    // Remove from list after animation
+    // Clear animation state after animation completes
     setTimeout(() => {
       setCompletingTaskIds(prev => {
         const next = new Set(prev)
         next.delete(id)
         return next
       })
-      // Actually remove from storage
-      const filtered = tasks.filter(t => t.id !== id)
-      setTasks(filtered)
-      setToStorage(STORAGE_KEYS.tasks, filtered)
     }, 1000)
   }
 
   const handleDeleteTask = (id: string) => {
     const updated = tasks.filter(t => t.id !== id)
+    setTasks(updated)
+    setToStorage(STORAGE_KEYS.tasks, updated)
+  }
+
+  const handleClearCompletedTasks = () => {
+    const updated = tasks.filter(t => !t.completed)
     setTasks(updated)
     setToStorage(STORAGE_KEYS.tasks, updated)
   }
@@ -3863,6 +3874,98 @@ export default function KnarrDashboard() {
           {/* Habit Chart - Full Width */}
           <div id="tutorial-habits" className="glass p-3 sm:p-4 mb-3 sm:mb-4">
             <HabitChart habitLogs={habitLogs} habits={habits} />
+          </div>
+
+          {/* Task Manager Section */}
+          <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-display text-sm text-bone flex items-center gap-2">
+                <Target className="w-4 h-4 text-ember" />
+                Task Manager
+              </h3>
+              {completedTasks.length > 0 && (
+                <button
+                  onClick={handleClearCompletedTasks}
+                  className="text-xs text-stone hover:text-blood-red transition-colors"
+                >
+                  Clear completed
+                </button>
+              )}
+            </div>
+
+            {/* Stats Row */}
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="glass-recessed rounded-lg p-3 text-center">
+                <p className="text-2xl font-mono text-bone">{todayTasks.length}</p>
+                <p className="text-xs text-stone">Today</p>
+              </div>
+              <div className="glass-recessed rounded-lg p-3 text-center">
+                <p className="text-2xl font-mono text-ember">{upcomingTasks.length}</p>
+                <p className="text-xs text-stone">Upcoming</p>
+              </div>
+              <div className="glass-recessed rounded-lg p-3 text-center">
+                <p className="text-2xl font-mono text-victory-green">{completedTasks.length}</p>
+                <p className="text-xs text-stone">Completed</p>
+              </div>
+            </div>
+
+            {/* Upcoming Tasks */}
+            {upcomingTasks.length > 0 && (
+              <div className="mb-4">
+                <h4 className="text-xs text-stone uppercase tracking-wider mb-2">Upcoming</h4>
+                <div className="space-y-1">
+                  {upcomingTasks.slice(0, 5).map(task => (
+                    <div key={task.id} className="flex items-center justify-between py-2 px-3 glass-recessed rounded-lg">
+                      <span className="text-sm text-fog">{task.name}</span>
+                      <span className="text-xs text-ember">
+                        {task.scheduled_date === getDateOffset(1)
+                          ? 'Tomorrow'
+                          : formatShortDate(task.scheduled_date!)}
+                      </span>
+                    </div>
+                  ))}
+                  {upcomingTasks.length > 5 && (
+                    <p className="text-xs text-stone text-center py-1">
+                      +{upcomingTasks.length - 5} more
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Completed Tasks */}
+            {completedTasks.length > 0 ? (
+              <div>
+                <h4 className="text-xs text-stone uppercase tracking-wider mb-2">Completed</h4>
+                <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                  {completedTasks.map(task => (
+                    <div key={task.id} className="flex items-center justify-between py-2 px-3 glass-recessed rounded-lg group">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <CheckSquare className="w-4 h-4 text-victory-green flex-shrink-0" />
+                        <span className="text-sm text-stone line-through truncate">{task.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-stone">
+                          {task.completed_at
+                            ? formatShortDate(task.completed_at.split('T')[0])
+                            : ''}
+                        </span>
+                        <button
+                          onClick={() => handleDeleteTask(task.id)}
+                          className="p-1 text-stone hover:text-blood-red transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-stone text-sm text-center py-4">
+                No completed tasks yet. Complete tasks in Log mode!
+              </p>
+            )}
           </div>
 
           {/* Insights Section */}
