@@ -573,11 +573,13 @@ function WeightChart({
 function CalorieChart({
   calories,
   goal,
-  className
+  className,
+  onLoadSample
 }: {
   calories: CalorieLog[]
   goal: number | null
   className?: string
+  onLoadSample?: () => void
 }) {
   const [chartMounted, setChartMounted] = useState(false)
 
@@ -592,6 +594,14 @@ function CalorieChart({
           <Flame className="w-8 h-8 text-stone mb-3 opacity-50" />
           <p className="text-fog text-sm">Log at least 2 days of calories</p>
           <p className="text-stone text-xs mt-1">to see your intake trends</p>
+          {onLoadSample && (
+            <button
+              onClick={onLoadSample}
+              className="mt-3 text-xs text-ember hover:text-bone transition-colors underline underline-offset-2"
+            >
+              Load sample data
+            </button>
+          )}
         </div>
       </div>
     )
@@ -942,11 +952,13 @@ function InsightsCard({
 function HabitChart({
   habitLogs,
   habits,
-  className
+  className,
+  onLoadSample
 }: {
   habitLogs: HabitLog[]
   habits: Habit[]
   className?: string
+  onLoadSample?: () => void
 }) {
   const [chartMounted, setChartMounted] = useState(false)
 
@@ -966,6 +978,14 @@ function HabitChart({
           <CheckSquare className="w-8 h-8 text-stone mb-3 opacity-50" />
           <p className="text-fog text-sm">Track habits for at least 2 days</p>
           <p className="text-stone text-xs mt-1">to see completion trends</p>
+          {onLoadSample && (
+            <button
+              onClick={onLoadSample}
+              className="mt-3 text-xs text-victory-green hover:text-bone transition-colors underline underline-offset-2"
+            >
+              Load sample data
+            </button>
+          )}
         </div>
       </div>
     )
@@ -3115,6 +3135,61 @@ export default function KnarrDashboard() {
     }
   }
 
+  const loadSampleCalorieData = () => {
+    const sampleCalories: CalorieLog[] = []
+    const baseCalories = 2000
+    for (let i = 13; i >= 0; i--) {
+      const date = new Date()
+      date.setDate(date.getDate() - i)
+      const variation = Math.floor((Math.random() - 0.5) * 600) // +/- 300 calories
+      sampleCalories.push({
+        id: crypto.randomUUID(),
+        date: date.toISOString().split('T')[0]!,
+        calories: baseCalories + variation,
+        created_at: date.toISOString(),
+      })
+    }
+    setCalories(sampleCalories)
+    setToStorage(STORAGE_KEYS.calories, sampleCalories)
+    if (!calorieGoal) {
+      setCalorieGoal(2000)
+      setToStorage(STORAGE_KEYS.calorieGoal, 2000)
+    }
+  }
+
+  const loadSampleHabitData = () => {
+    // Create sample habits if none exist
+    const sampleHabits: Habit[] = [
+      { id: crypto.randomUUID(), name: 'Morning workout', active: true },
+      { id: crypto.randomUUID(), name: 'Read 30 minutes', active: true },
+      { id: crypto.randomUUID(), name: 'Drink 8 glasses of water', active: true },
+      { id: crypto.randomUUID(), name: 'Meditate', active: true },
+    ]
+    setHabits(sampleHabits)
+    setToStorage(STORAGE_KEYS.habits, sampleHabits)
+
+    // Create sample habit logs for the past 14 days
+    const sampleLogs: HabitLog[] = []
+    for (let i = 13; i >= 0; i--) {
+      const date = new Date()
+      date.setDate(date.getDate() - i)
+      const dateStr = date.toISOString().split('T')[0]!
+
+      sampleHabits.forEach(habit => {
+        // Random completion rate ~70%
+        const completed = Math.random() > 0.3
+        sampleLogs.push({
+          id: crypto.randomUUID(),
+          habit_id: habit.id,
+          date: dateStr,
+          completed,
+        })
+      })
+    }
+    setHabitLogs(sampleLogs)
+    setToStorage(STORAGE_KEYS.habitLogs, sampleLogs)
+  }
+
   const handleAddMessage = (messageData: Omit<Message, 'id' | 'read'>) => {
     const newMessage: Message = {
       ...messageData,
@@ -4143,14 +4218,14 @@ export default function KnarrDashboard() {
           {/* Calorie Chart - Full Width */}
           {(activeChart === null || activeChart === 'calories') && (
             <div className="glass p-3 sm:p-4 mb-3 sm:mb-4 h-[240px] sm:h-[280px]">
-              <CalorieChart calories={calories} goal={calorieGoal} />
+              <CalorieChart calories={calories} goal={calorieGoal} onLoadSample={loadSampleCalorieData} />
             </div>
           )}
 
           {/* Habit Chart - Full Width */}
           {(activeChart === null || activeChart === 'habits') && (
             <div id="tutorial-habits" className="glass p-3 sm:p-4 mb-3 sm:mb-4 h-[240px] sm:h-[280px]">
-              <HabitChart habitLogs={habitLogs} habits={habits} />
+              <HabitChart habitLogs={habitLogs} habits={habits} onLoadSample={loadSampleHabitData} />
             </div>
           )}
 
