@@ -36,6 +36,7 @@ import {
 import { useAuth } from '../lib/auth'
 import { AuthScreen } from '../components/AuthScreen'
 import { OnboardingFlow } from '../components/OnboardingFlow'
+import { Tutorial, TutorialStep } from '../components/Tutorial'
 import {
   LineChart,
   Line,
@@ -211,6 +212,7 @@ const STORAGE_KEYS = {
   lifeGoals: 'knarr_life_goals',
   waypoints: 'knarr_waypoints',
   onboardingComplete: 'knarr_onboarding_complete',
+  tutorialComplete: 'knarr_tutorial_complete',
 }
 
 // Weight analysis helpers
@@ -2653,6 +2655,53 @@ export default function KnarrDashboard() {
   const [devBypass, setDevBypass] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(true) // Default true to avoid flash
+  const [showTutorial, setShowTutorial] = useState(false)
+
+  // Tutorial steps definition
+  const tutorialSteps: TutorialStep[] = [
+    {
+      target: '',
+      title: 'Welcome to Knarr',
+      description: 'Your personal command centre for life. Let me show you around the dashboard and how to track your progress.',
+      position: 'center'
+    },
+    {
+      target: '#tutorial-mode-toggle',
+      title: 'View & Log Modes',
+      description: 'Switch between View mode to see your progress and charts, or Log mode to enter your daily data like calories, weight, and habits.',
+      position: 'bottom'
+    },
+    {
+      target: '#tutorial-stats',
+      title: 'Quick Stats',
+      description: 'Your key metrics at a glance: current streak, today\'s calories, latest weight, habit completion, and 7-day weight average.',
+      position: 'bottom'
+    },
+    {
+      target: '#tutorial-charts',
+      title: 'Progress Charts',
+      description: 'Visualise your weight and calorie trends over time. The charts help you spot patterns and stay motivated towards your goals.',
+      position: 'top'
+    },
+    {
+      target: '#tutorial-habits',
+      title: 'Habit Tracking',
+      description: 'See your daily habit completion patterns. Building consistent habits is key to achieving your goals.',
+      position: 'top'
+    },
+    {
+      target: '#tutorial-insights',
+      title: 'Insights',
+      description: 'Get personalised insights based on your data. Knarr analyses patterns and correlations to help you understand what works.',
+      position: 'top'
+    },
+    {
+      target: '',
+      title: 'Ready to Begin',
+      description: 'Switch to Log mode to start tracking your daily progress. Your voyage starts now!',
+      position: 'center'
+    }
+  ]
 
   const today = getTodayString()
 
@@ -3035,10 +3084,26 @@ export default function KnarrDashboard() {
       setToStorage(STORAGE_KEYS.habits, updatedHabits)
     }
 
-    // Mark onboarding as complete
+    // Mark onboarding as complete and start tutorial
     setHasCompletedOnboarding(true)
     setShowOnboarding(false)
     setToStorage(STORAGE_KEYS.onboardingComplete, true)
+
+    // Start the tutorial after a brief delay to let the dashboard render
+    setTimeout(() => {
+      setShowTutorial(true)
+    }, 500)
+  }
+
+  // Tutorial completion handlers
+  const handleTutorialComplete = () => {
+    setShowTutorial(false)
+    setToStorage(STORAGE_KEYS.tutorialComplete, true)
+  }
+
+  const handleTutorialSkip = () => {
+    setShowTutorial(false)
+    setToStorage(STORAGE_KEYS.tutorialComplete, true)
   }
 
   // Recent waypoints
@@ -3074,6 +3139,15 @@ export default function KnarrDashboard() {
 
   return (
     <div className="min-h-screen relative overflow-hidden">
+      {/* Tutorial Overlay */}
+      {showTutorial && (
+        <Tutorial
+          steps={tutorialSteps}
+          onComplete={handleTutorialComplete}
+          onSkip={handleTutorialSkip}
+        />
+      )}
+
       {/* Video Background */}
       <div className="fixed inset-0 z-0">
         <video
@@ -3304,8 +3378,10 @@ export default function KnarrDashboard() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <ModeToggle mode={mode} onToggle={() => setMode(mode === 'view' ? 'log' : 'view')} />
-                <div className="text-right hidden sm:block">
+                <div id="tutorial-mode-toggle">
+                  <ModeToggle mode={mode} onToggle={() => setMode(mode === 'view' ? 'log' : 'view')} />
+                </div>
+                <div id="tutorial-greeting" className="text-right hidden sm:block">
                   <p className="text-fog text-sm">{getGreeting()},</p>
                   <p className="font-display text-lg text-bone font-semibold">
                     {user?.email?.split('@')[0] || userName}
@@ -3560,7 +3636,7 @@ export default function KnarrDashboard() {
 
 
           {/* Stats Summary Row */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+          <div id="tutorial-stats" className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
             <div className="glass-recessed rounded-xl p-3 text-center">
               <p className="text-[10px] text-stone uppercase mb-1">Streak</p>
               <p className="font-mono text-xl text-ember">{Math.max(calorieStreak, habitStreak)}</p>
@@ -3592,7 +3668,7 @@ export default function KnarrDashboard() {
           </div>
 
           {/* Charts Grid */}
-          <div className="grid lg:grid-cols-2 gap-4 mb-4">
+          <div id="tutorial-charts" className="grid lg:grid-cols-2 gap-4 mb-4">
             {/* Weight Chart */}
             <div className="glass p-4">
               <WeightChart weights={weights} goal={weightGoal} onLoadSample={loadSampleWeightData} onLogWeight={() => { setMode('log') }} className="h-[200px]" />
@@ -3605,12 +3681,12 @@ export default function KnarrDashboard() {
           </div>
 
           {/* Habit Chart */}
-          <div className="glass p-4 mb-4">
+          <div id="tutorial-habits" className="glass p-4 mb-4">
             <HabitChart habitLogs={habitLogs} habits={habits} />
           </div>
 
           {/* Insights Section */}
-          <section className="max-w-2xl">
+          <section id="tutorial-insights" className="max-w-2xl">
             {/* Insights Card */}
             <DirectionCard title="Insights" icon={TrendingUp} delay={0.25}>
               <div className="space-y-4">
