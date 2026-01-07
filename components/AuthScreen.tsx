@@ -2,10 +2,14 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mail, Lock, ArrowRight, Anchor, AlertCircle } from 'lucide-react'
+import { Mail, Lock, ArrowRight, Anchor, AlertCircle, Code } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 
-export function AuthScreen() {
+interface AuthScreenProps {
+  onDevBypass?: () => void
+}
+
+export function AuthScreen({ onDevBypass }: AuthScreenProps) {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -265,6 +269,19 @@ export function AuthScreen() {
             </>
           )}
         </p>
+
+        {/* Dev Bypass - only in development */}
+        {onDevBypass && process.env.NODE_ENV === 'development' && (
+          <div className="mt-6 pt-4 border-t border-white/10">
+            <button
+              onClick={onDevBypass}
+              className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-lg bg-fjord-blue/20 border border-fjord-blue/30 text-fjord-blue hover:bg-fjord-blue/30 transition-colors text-sm"
+            >
+              <Code className="w-4 h-4" />
+              Dev Mode: Skip Login
+            </button>
+          </div>
+        )}
       </motion.div>
     </div>
   )

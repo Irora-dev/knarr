@@ -35,6 +35,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { AuthScreen } from '../components/AuthScreen'
+import { OnboardingFlow } from '../components/OnboardingFlow'
 import {
   LineChart,
   Line,
@@ -197,18 +198,19 @@ const formatPeriod = (start: string, end: string, type: 'weekly' | 'monthly') =>
 
 // Local Storage helpers
 const STORAGE_KEYS = {
-  calories: 'compass_calories',
-  weights: 'compass_weights',
-  habits: 'compass_habits',
-  habitLogs: 'compass_habit_logs',
-  headings: 'compass_headings',
-  userName: 'compass_user_name',
-  weightGoal: 'compass_weight_goal',
-  calorieGoal: 'compass_calorie_goal',
-  messages: 'compass_messages',
-  bearings: 'compass_bearings',
-  lifeGoals: 'compass_life_goals',
-  waypoints: 'compass_waypoints',
+  calories: 'knarr_calories',
+  weights: 'knarr_weights',
+  habits: 'knarr_habits',
+  habitLogs: 'knarr_habit_logs',
+  headings: 'knarr_headings',
+  userName: 'knarr_user_name',
+  weightGoal: 'knarr_weight_goal',
+  calorieGoal: 'knarr_calorie_goal',
+  messages: 'knarr_messages',
+  bearings: 'knarr_bearings',
+  lifeGoals: 'knarr_life_goals',
+  waypoints: 'knarr_waypoints',
+  onboardingComplete: 'knarr_onboarding_complete',
 }
 
 // Weight analysis helpers
@@ -2647,18 +2649,32 @@ export default function KnarrDashboard() {
   const [editValue, setEditValue] = useState('')
   const [newHabitName, setNewHabitName] = useState('')
 
+  // Auth and onboarding state
+  const [devBypass, setDevBypass] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(true) // Default true to avoid flash
+
   const today = getTodayString()
 
   // Load from localStorage on mount
   useEffect(() => {
     setMounted(true)
+
+    // Check onboarding status
+    const onboardingDone = getFromStorage<boolean>(STORAGE_KEYS.onboardingComplete, false)
+    setHasCompletedOnboarding(onboardingDone)
+    if (!onboardingDone) {
+      setShowOnboarding(true)
+    }
+
+    // Load user name
+    const savedName = getFromStorage<string>(STORAGE_KEYS.userName, 'Voyager')
+    setUserName(savedName)
+
+    // Load data
     setCalories(getFromStorage(STORAGE_KEYS.calories, []))
     setWeights(getFromStorage(STORAGE_KEYS.weights, []))
-    setHabits(getFromStorage(STORAGE_KEYS.habits, [
-      { id: '1', name: 'Morning routine', active: true },
-      { id: '2', name: 'Exercise', active: true },
-      { id: '3', name: 'Read 30 mins', active: true },
-    ]))
+    setHabits(getFromStorage(STORAGE_KEYS.habits, []))
     setHabitLogs(getFromStorage(STORAGE_KEYS.habitLogs, []))
     setHeadings(getFromStorage(STORAGE_KEYS.headings, []))
     const savedGoal = getFromStorage<number | null>(STORAGE_KEYS.weightGoal, null)
@@ -2969,6 +2985,62 @@ export default function KnarrDashboard() {
     setToStorage(STORAGE_KEYS.waypoints, updated)
   }
 
+  // Onboarding completion handler
+  const handleOnboardingComplete = (data: {
+    name: string
+    focusAreas: string[]
+    weightGoal: number | null
+    currentWeight: number | null
+    calorieGoal: number | null
+    initialHabits: string[]
+  }) => {
+    // Save user name
+    setUserName(data.name)
+    setToStorage(STORAGE_KEYS.userName, data.name)
+
+    // Save weight goal if provided
+    if (data.weightGoal) {
+      setWeightGoal(data.weightGoal)
+      setToStorage(STORAGE_KEYS.weightGoal, data.weightGoal)
+    }
+
+    // Save calorie goal if provided
+    if (data.calorieGoal) {
+      setCalorieGoal(data.calorieGoal)
+      setToStorage(STORAGE_KEYS.calorieGoal, data.calorieGoal)
+    }
+
+    // Add current weight as first entry if provided
+    if (data.currentWeight) {
+      const weightEntry: WeightEntry = {
+        id: crypto.randomUUID(),
+        date: today,
+        weight: data.currentWeight,
+        created_at: new Date().toISOString()
+      }
+      const updatedWeights = [...weights, weightEntry]
+      setWeights(updatedWeights)
+      setToStorage(STORAGE_KEYS.weights, updatedWeights)
+    }
+
+    // Create initial habits
+    if (data.initialHabits.length > 0) {
+      const newHabits: Habit[] = data.initialHabits.map(name => ({
+        id: crypto.randomUUID(),
+        name,
+        active: true
+      }))
+      const updatedHabits = [...habits, ...newHabits]
+      setHabits(updatedHabits)
+      setToStorage(STORAGE_KEYS.habits, updatedHabits)
+    }
+
+    // Mark onboarding as complete
+    setHasCompletedOnboarding(true)
+    setShowOnboarding(false)
+    setToStorage(STORAGE_KEYS.onboardingComplete, true)
+  }
+
   // Recent waypoints
   const recentWaypoints = [...waypoints]
     .sort((a, b) => new Date(b.achieved_date).getTime() - new Date(a.achieved_date).getTime())
@@ -2990,8 +3062,14 @@ export default function KnarrDashboard() {
   }
 
   // Auth check - show login screen if Supabase is configured but user isn't logged in
-  if (isConfigured && !user) {
-    return <AuthScreen />
+  // Dev bypass allows skipping auth during development
+  if (isConfigured && !user && !devBypass) {
+    return <AuthScreen onDevBypass={() => setDevBypass(true)} />
+  }
+
+  // Onboarding check - show onboarding flow for first-time users
+  if (showOnboarding && !hasCompletedOnboarding) {
+    return <OnboardingFlow onComplete={handleOnboardingComplete} />
   }
 
   return (
