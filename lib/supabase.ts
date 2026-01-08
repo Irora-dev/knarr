@@ -34,4 +34,8 @@ export const ENTITY_TYPES = {
   WAYPOINT: 'waypoint',
   BEARING: 'bearing',
   LIFE_GOAL: 'life_goal',
+  // Finance (encrypted)
+  FINANCE_ACCOUNT: 'finance_account',
+  FINANCE_TRANSACTION: 'finance_transaction',
+  NET_WORTH_SNAPSHOT: 'net_worth_snapshot',
 } as const

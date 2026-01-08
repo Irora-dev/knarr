@@ -115,8 +115,8 @@ export function AuthScreen({ onDevBypass }: AuthScreenProps) {
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-2">
-            <img src="/iconmain.png" alt="Knarr" className="h-12 w-auto" />
+          <div className="flex flex-col items-center justify-center mb-2">
+            <img src="/iconmain.png" alt="Knarr" className="h-16 w-auto mb-3" />
             <h1 className="font-display text-3xl text-bone font-bold tracking-wide">Knarr</h1>
           </div>
           <p className="text-fog text-sm">The command centre for life</p>

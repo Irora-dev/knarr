@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Compass as CompassIcon,
@@ -31,12 +31,31 @@ import {
   DollarSign,
   Flag,
   Trophy,
-  LogOut
+  LogOut,
+  Settings,
+  Trash2,
+  RefreshCw,
+  User,
+  Sun,
+  Moon,
+  Coffee,
+  Pill,
+  Beaker,
+  Clock,
+  AlertTriangle,
+  Zap,
+  BedDouble,
+  Utensils,
+  Info,
+  Sparkles
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
+import { isSupabaseConfigured } from '../lib/supabase'
+import { useKnarrData } from '../lib/useKnarrData'
 import { AuthScreen } from '../components/AuthScreen'
 import { OnboardingFlow } from '../components/OnboardingFlow'
 import { Tutorial, TutorialStep } from '../components/Tutorial'
+import { SettingsModal } from '../components/SettingsModal'
 import {
   LineChart,
   Line,
@@ -135,6 +154,237 @@ interface Waypoint {
   created_at: string
 }
 
+interface FinanceAccount {
+  id: string
+  name: string
+  type: 'cash' | 'checking' | 'savings' | 'investment' | 'crypto' | 'property' | 'debt' | 'other'
+  balance: number
+  currency: string
+  institution?: string
+  notes?: string
+  is_asset: boolean
+  last_updated: string
+  created_at: string
+}
+
+interface NetWorthSnapshot {
+  id: string
+  date: string
+  total_assets: number
+  total_liabilities: number
+  net_worth: number
+  breakdown: {
+    account_id: string
+    name: string
+    type: string
+    balance: number
+  }[]
+  created_at: string
+}
+
+// Dopamine Routine Types
+type RoutinePhase = 'morning' | 'deepwork' | 'dinner' | 'sleep' | 'rescue'
+
+interface SupplementItem {
+  id: string
+  name: string
+  dosage: string
+  measurement?: string
+  effect: string
+  details: string
+  warning?: string
+  optional?: boolean
+  substituteFor?: string
+}
+
+interface RoutinePhaseData {
+  id: RoutinePhase
+  title: string
+  subtitle: string
+  time: string
+  goal: string
+  icon: typeof Sun
+  color: string
+  bgColor: string
+  items: SupplementItem[]
+  protocolRule?: string
+  environment?: string[]
+  trigger?: string
+  limit?: string
+}
+
+// Dopamine Routine Data
+const DOPAMINE_ROUTINE: RoutinePhaseData[] = [
+  {
+    id: 'morning',
+    title: 'Morning Activation',
+    subtitle: 'Phase 1',
+    time: '15–30 min post-waking',
+    goal: 'Wake up brain without spiking anxiety',
+    icon: Sun,
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-400/20',
+    protocolRule: 'No phone/screens for the first 60 minutes',
+    items: [
+      {
+        id: 'whey',
+        name: 'Whey Protein',
+        dosage: '1 Scoop',
+        measurement: '~3 Heaping Tablespoons if no scoop',
+        effect: 'Stabilizes blood sugar',
+        details: 'Mix in shaker with water/milk as part of the Neuro-Breakfast Shake. Provides sustained energy and prevents blood sugar crashes that can trigger anxiety.',
+      },
+      {
+        id: 'creatine',
+        name: 'Creatine',
+        dosage: '5g',
+        measurement: '1 Full Teaspoon',
+        effect: 'Mental endurance',
+        details: 'Add to shake. Creatine supports ATP production in the brain, enhancing cognitive function and mental stamina throughout the day.',
+      },
+      {
+        id: 'taurine-morning',
+        name: 'Taurine',
+        dosage: '1g',
+        measurement: '1/4 Teaspoon (tip of spoon)',
+        effect: 'Calms nervous system startle response',
+        details: 'Add to shake. Taurine is an amino acid that helps regulate GABA, reducing the "jumpy" feeling and nervous system over-reactivity.',
+      },
+      {
+        id: 'alcar',
+        name: 'ALCAR (Acetyl L-Carnitine)',
+        dosage: '1 Capsule (500mg)',
+        effect: 'Clears brain fog & scattered thoughts',
+        details: 'Take with shake. ALCAR crosses the blood-brain barrier and supports acetylcholine production, the neurotransmitter responsible for focus and memory.',
+      },
+      {
+        id: 'rhodiola',
+        name: 'Rhodiola Rosea',
+        dosage: '1 Capsule',
+        effect: 'Prevents burnout & fatigue',
+        details: 'Adaptogenic herb that helps the body resist physical, chemical, and biological stressors. Particularly effective for preventing the afternoon crash.',
+        optional: true,
+      },
+    ],
+  },
+  {
+    id: 'deepwork',
+    title: 'Deep Work Block',
+    subtitle: 'Phase 2',
+    time: '90 min post-waking',
+    goal: 'Achieve flow state',
+    icon: Brain,
+    color: 'text-purple-400',
+    bgColor: 'bg-purple-400/20',
+    environment: ['Phone in another room', 'Earplugs in (if noisy)'],
+    items: [
+      {
+        id: 'taurine-work',
+        name: 'Taurine (Optional Booster)',
+        dosage: '0.5g – 1g',
+        measurement: 'Sip in water',
+        effect: 'Reduces physical anxiety',
+        details: 'Use if you feel physical anxiety or "chest buzzing" during work. Taurine helps calm the physical manifestations of stress without sedating you.',
+        optional: true,
+      },
+    ],
+  },
+  {
+    id: 'dinner',
+    title: 'Cortisol Cutoff',
+    subtitle: 'Phase 3',
+    time: 'With dinner (last meal)',
+    goal: 'Blunt stress response for sleep prep',
+    icon: Utensils,
+    color: 'text-orange-400',
+    bgColor: 'bg-orange-400/20',
+    items: [
+      {
+        id: 'phosphatidylserine',
+        name: 'Phosphatidylserine',
+        dosage: '1 Capsule (150mg)',
+        effect: 'Blunts physical stress & cortisol spikes',
+        details: 'Take with dinner. PS is a phospholipid that helps regulate cortisol, particularly effective at reducing elevated evening cortisol that can interfere with sleep.',
+      },
+      {
+        id: 'ashwagandha',
+        name: 'Ashwagandha',
+        dosage: '1 Capsule',
+        effect: 'Lowers serum cortisol',
+        details: 'Take with dinner. This adaptogenic herb has been shown to reduce cortisol levels by up to 30%. If you have Stress Care bottle, take that INSTEAD.',
+        warning: 'If you have the Stress Care bottle, take that INSTEAD of Ashwagandha.',
+      },
+    ],
+  },
+  {
+    id: 'sleep',
+    title: 'GABA Restoration',
+    subtitle: 'Phase 4',
+    time: '45 min before sleep',
+    goal: 'Deep sleep & temperature regulation',
+    icon: Moon,
+    color: 'text-indigo-400',
+    bgColor: 'bg-indigo-400/20',
+    protocolRule: 'No screens 90 minutes before bed',
+    items: [
+      {
+        id: 'magnesium',
+        name: 'Magnesium Bisglycinate',
+        dosage: '~400mg elemental',
+        measurement: '1/2 Flat Teaspoon (Silver Bag)',
+        effect: 'Relaxation & temperature regulation',
+        details: 'Mix in small cup of water as "Sleep Mocktail". Magnesium glycinate is the most bioavailable form and promotes GABA activity for calming effects.',
+      },
+      {
+        id: 'glycine',
+        name: 'Glycine',
+        dosage: '3g–5g',
+        measurement: '1 Heaping Teaspoon',
+        effect: 'Enhances sleep quality',
+        details: 'Add to Sleep Mocktail. Glycine lowers core body temperature and increases time spent in REM sleep. Also supports liver detoxification overnight.',
+      },
+      {
+        id: 'apigenin',
+        name: 'Apigenin',
+        dosage: '1 Capsule',
+        effect: 'Natural sedative from chamomile',
+        details: 'Take with Sleep Mocktail. Apigenin binds to GABA receptors similarly to benzodiazepines but without the side effects or dependency risk.',
+        optional: true,
+      },
+    ],
+  },
+  {
+    id: 'rescue',
+    title: 'Rescue Protocols',
+    subtitle: 'Non-Daily',
+    time: 'As needed',
+    goal: 'Emergency sedation for panic/insomnia',
+    icon: AlertTriangle,
+    color: 'text-red-400',
+    bgColor: 'bg-red-400/20',
+    trigger: 'Physical shaking, severe anxiety, or "wired but tired" crash',
+    limit: 'Max 2x per week for Valerian',
+    items: [
+      {
+        id: 'valerian',
+        name: 'Valerian Root (Panic Button)',
+        dosage: '1 Capsule',
+        effect: 'Emergency sedation',
+        details: 'Take 1 hour before bed when experiencing severe anxiety or panic. Valerian works on GABA receptors to produce a strong calming effect.',
+        warning: 'Do not drive. Do not combine with alcohol. Max 2x per week.',
+      },
+      {
+        id: 'chelated-mag',
+        name: 'Chelated Magnesium (Travel Backup)',
+        dosage: '2–3 Capsules',
+        effect: 'Substitute for powder when traveling',
+        details: 'Use when traveling or too tired to mix powders. The black bottle capsules are a convenient alternative to the powder form.',
+        substituteFor: 'Magnesium Powder',
+      },
+    ],
+  },
+]
+
 // Helper functions
 const getTodayString = (): string => {
   const date = new Date().toISOString().split('T')[0]
@@ -206,25 +456,6 @@ const formatPeriod = (start: string, end: string, type: 'weekly' | 'monthly') =>
   return `${startDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${endDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
 }
 
-// Local Storage helpers
-const STORAGE_KEYS = {
-  calories: 'knarr_calories',
-  weights: 'knarr_weights',
-  habits: 'knarr_habits',
-  habitLogs: 'knarr_habit_logs',
-  tasks: 'knarr_tasks',
-  headings: 'knarr_headings',
-  userName: 'knarr_user_name',
-  weightGoal: 'knarr_weight_goal',
-  calorieGoal: 'knarr_calorie_goal',
-  messages: 'knarr_messages',
-  bearings: 'knarr_bearings',
-  lifeGoals: 'knarr_life_goals',
-  waypoints: 'knarr_waypoints',
-  onboardingComplete: 'knarr_onboarding_complete',
-  tutorialComplete: 'knarr_tutorial_complete',
-}
-
 // Weight analysis helpers
 function calculateRollingAverage(weights: WeightEntry[], days: number): number | null {
   if (weights.length === 0) return null
@@ -271,15 +502,110 @@ function getProgressToGoal(current: number, goal: number, start?: number): numbe
   return Math.max(0, Math.min(100, progress))
 }
 
-function getFromStorage<T>(key: string, defaultValue: T): T {
-  if (typeof window === 'undefined') return defaultValue
-  const stored = localStorage.getItem(key)
-  return stored ? JSON.parse(stored) : defaultValue
+// Streak calculation with grace day recovery (1 day forgiveness)
+interface StreakResult {
+  count: number
+  graceDayUsed: boolean
+  recentDays: { date: string; logged: boolean; isGraceDay: boolean }[]
 }
 
-function setToStorage<T>(key: string, value: T): void {
-  if (typeof window === 'undefined') return
-  localStorage.setItem(key, JSON.stringify(value))
+function calculateStreakWithGrace(
+  loggedDates: Set<string>,
+  maxDaysToCheck: number = 30
+): StreakResult {
+  const today = new Date()
+  const todayStr = today.toISOString().split('T')[0]!
+
+  let streak = 0
+  let graceDayUsed = false
+  let missedDays = 0
+  const recentDays: { date: string; logged: boolean; isGraceDay: boolean }[] = []
+
+  // Check if today is logged
+  const todayLogged = loggedDates.has(todayStr)
+
+  // Add today to recent days
+  recentDays.push({
+    date: todayStr,
+    logged: todayLogged,
+    isGraceDay: false
+  })
+
+  if (todayLogged) {
+    streak = 1
+  }
+
+  // Now check backwards from yesterday
+  for (let i = 1; i < maxDaysToCheck; i++) {
+    const checkDate = new Date(today)
+    checkDate.setDate(checkDate.getDate() - i)
+    const dateStr = checkDate.toISOString().split('T')[0]!
+    const logged = loggedDates.has(dateStr)
+
+    if (logged) {
+      streak++
+      recentDays.push({
+        date: dateStr,
+        logged: true,
+        isGraceDay: false
+      })
+      missedDays = 0 // Reset consecutive missed days
+    } else {
+      missedDays++
+
+      // Allow 1 grace day - only if we already have a streak going
+      if (missedDays === 1 && !graceDayUsed && streak > 0) {
+        // Look ahead to see if there's a logged day after this gap
+        const dayBeforeGap = new Date(checkDate)
+        dayBeforeGap.setDate(dayBeforeGap.getDate() - 1)
+        const dayBeforeGapStr = dayBeforeGap.toISOString().split('T')[0]!
+
+        if (loggedDates.has(dayBeforeGapStr)) {
+          graceDayUsed = true
+          recentDays.push({
+            date: dateStr,
+            logged: false,
+            isGraceDay: true
+          })
+          // Continue - don't count grace day in streak number
+          continue
+        }
+      }
+
+      // If we haven't started a real streak yet, just skip
+      if (streak === 0) {
+        recentDays.push({
+          date: dateStr,
+          logged: false,
+          isGraceDay: false
+        })
+        break
+      }
+
+      // More than 1 consecutive day missed - streak ends
+      if (missedDays > 1) {
+        recentDays.push({
+          date: dateStr,
+          logged: false,
+          isGraceDay: false
+        })
+        break
+      }
+
+      recentDays.push({
+        date: dateStr,
+        logged: false,
+        isGraceDay: false
+      })
+      break
+    }
+  }
+
+  return {
+    count: streak,
+    graceDayUsed,
+    recentDays: recentDays.slice(0, 14) // Limit to 14 days for display
+  }
 }
 
 // Compass Rose SVG Component
@@ -333,6 +659,85 @@ function StreakDisplay({ count, label }: { count: number; label: string }) {
       )}
       <span className="text-caption text-fog">{label}</span>
     </div>
+  )
+}
+
+// Anchor Streak Bar Component - Premium streak display at top of content
+function AnchorStreakBar({ streakData }: { streakData: StreakResult }) {
+  const { count, graceDayUsed, recentDays } = streakData
+
+  // Show last 7 days in reverse order (most recent first, display left to right)
+  const displayDays = recentDays.slice(0, 7).reverse()
+
+  return (
+    <motion.div
+      className="anchor-streak-bar"
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: 0.1 }}
+    >
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 sm:py-2.5">
+        <div className="flex items-center justify-between gap-4">
+          {/* Left: Anchor + Streak Count */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="anchor-icon-container">
+              <Anchor className="w-4 h-4 sm:w-5 sm:h-5 text-fjord" />
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-mono text-xl sm:text-2xl font-bold text-ember">{count}</span>
+              <span className="text-xs sm:text-sm text-fog">day streak</span>
+            </div>
+            {graceDayUsed && (
+              <motion.div
+                className="grace-day-badge"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                title="Your streak was saved! One grace day was used."
+              >
+                <span className="text-[10px] sm:text-xs text-victory-green font-medium">Anchored</span>
+              </motion.div>
+            )}
+          </div>
+
+          {/* Right: Day chain visualization */}
+          <div className="flex items-center gap-1 sm:gap-1.5">
+            {displayDays.map((day, index) => {
+              const dayLabel = new Date(day.date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short' }).charAt(0)
+              return (
+                <div key={day.date} className="flex flex-col items-center gap-0.5">
+                  <motion.div
+                    className={`streak-day-dot ${
+                      day.logged ? 'logged' :
+                      day.isGraceDay ? 'grace' :
+                      'missed'
+                    }`}
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.1 + index * 0.05 }}
+                    title={
+                      day.isGraceDay
+                        ? `${formatShortDate(day.date)} - Grace day (streak saved!)`
+                        : day.logged
+                        ? `${formatShortDate(day.date)} - Logged`
+                        : `${formatShortDate(day.date)} - No log`
+                    }
+                  >
+                    {day.isGraceDay && (
+                      <Anchor className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-fjord" />
+                    )}
+                  </motion.div>
+                  <span className="text-[8px] sm:text-[10px] text-stone hidden sm:block">{dayLabel}</span>
+                </div>
+              )
+            })}
+            {count > 7 && (
+              <span className="text-[10px] sm:text-xs text-stone ml-1">+{count - 7}</span>
+            )}
+          </div>
+        </div>
+      </div>
+    </motion.div>
   )
 }
 
@@ -2711,11 +3116,485 @@ function QuickLogModal({
   )
 }
 
+// Finance account type configuration
+const ACCOUNT_TYPES = [
+  { value: 'cash', label: 'Cash', icon: DollarSign, is_asset: true },
+  { value: 'checking', label: 'Checking', icon: DollarSign, is_asset: true },
+  { value: 'savings', label: 'Savings', icon: DollarSign, is_asset: true },
+  { value: 'investment', label: 'Investment', icon: TrendingUp, is_asset: true },
+  { value: 'crypto', label: 'Crypto', icon: DollarSign, is_asset: true },
+  { value: 'property', label: 'Property', icon: DollarSign, is_asset: true },
+  { value: 'debt', label: 'Debt/Loan', icon: TrendingDown, is_asset: false },
+  { value: 'other', label: 'Other', icon: DollarSign, is_asset: true },
+] as const
+
+// Finance Setup Modal (for encryption key)
+function FinanceSetupModal({
+  isOpen,
+  onClose,
+  onSubmit,
+}: {
+  isOpen: boolean
+  onClose: () => void
+  onSubmit: (key: string) => void
+}) {
+  const [key, setKey] = useState('')
+  const [confirmKey, setConfirmKey] = useState('')
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (isOpen) {
+      setKey('')
+      setConfirmKey('')
+      setError('')
+    }
+  }, [isOpen])
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (key.length < 8) {
+      setError('PIN must be at least 8 characters')
+      return
+    }
+    if (key !== confirmKey) {
+      setError('PINs do not match')
+      return
+    }
+    onSubmit(key)
+    onClose()
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="absolute inset-0 bg-forge-black/60 backdrop-blur-sm"
+            onClick={onClose}
+          />
+          <motion.div
+            className="glass-modal p-5 sm:p-8 w-full max-w-md relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-victory-green/20 flex items-center justify-center">
+                  <DollarSign className="w-5 h-5 text-victory-green" />
+                </div>
+                <div>
+                  <h2 className="font-display text-xl font-semibold">Finance Setup</h2>
+                  <p className="text-fog text-sm">Create your encryption PIN</p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="w-8 h-8 rounded-lg bg-iron-slate/50 flex items-center justify-center text-fog hover:text-bone hover:bg-iron-slate transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="glass-recessed rounded-lg p-4 mb-4">
+              <p className="text-sm text-fog">
+                Your financial data is encrypted with a PIN that only you know.
+                This PIN never leaves your device - if you forget it, your data cannot be recovered.
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs text-stone uppercase tracking-wider mb-2 block">
+                    Create PIN (8+ characters)
+                  </label>
+                  <input
+                    type="password"
+                    value={key}
+                    onChange={(e) => setKey(e.target.value)}
+                    placeholder="Enter your PIN"
+                    className="input w-full"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-stone uppercase tracking-wider mb-2 block">
+                    Confirm PIN
+                  </label>
+                  <input
+                    type="password"
+                    value={confirmKey}
+                    onChange={(e) => setConfirmKey(e.target.value)}
+                    placeholder="Confirm your PIN"
+                    className="input w-full"
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <p className="text-blood-red text-sm mt-3">{error}</p>
+              )}
+
+              <button type="submit" className="btn-primary w-full mt-6">
+                Enable Finance Tracking
+              </button>
+            </form>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
+// Finance Account Modal (add/edit)
+function FinanceAccountModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  existingAccount,
+  onDelete,
+}: {
+  isOpen: boolean
+  onClose: () => void
+  onSubmit: (account: Omit<FinanceAccount, 'id' | 'created_at'>) => void
+  existingAccount?: FinanceAccount | null
+  onDelete?: () => void
+}) {
+  const [name, setName] = useState('')
+  const [type, setType] = useState<FinanceAccount['type']>('checking')
+  const [balance, setBalance] = useState('')
+  const [currency, setCurrency] = useState('USD')
+  const [institution, setInstitution] = useState('')
+  const [notes, setNotes] = useState('')
+
+  useEffect(() => {
+    if (isOpen && existingAccount) {
+      setName(existingAccount.name)
+      setType(existingAccount.type)
+      setBalance(existingAccount.balance.toString())
+      setCurrency(existingAccount.currency)
+      setInstitution(existingAccount.institution || '')
+      setNotes(existingAccount.notes || '')
+    } else if (isOpen) {
+      setName('')
+      setType('checking')
+      setBalance('')
+      setCurrency('USD')
+      setInstitution('')
+      setNotes('')
+    }
+  }, [isOpen, existingAccount])
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!name.trim() || !balance) return
+
+    const accountType = ACCOUNT_TYPES.find(t => t.value === type)
+
+    onSubmit({
+      name: name.trim(),
+      type,
+      balance: parseFloat(balance),
+      currency,
+      institution: institution.trim() || undefined,
+      notes: notes.trim() || undefined,
+      is_asset: accountType?.is_asset ?? true,
+      last_updated: new Date().toISOString(),
+    })
+    onClose()
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="absolute inset-0 bg-forge-black/60 backdrop-blur-sm"
+            onClick={onClose}
+          />
+          <motion.div
+            className="glass-modal p-5 sm:p-8 w-full max-w-md relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-victory-green/20 flex items-center justify-center">
+                  <DollarSign className="w-5 h-5 text-victory-green" />
+                </div>
+                <div>
+                  <h2 className="font-display text-xl font-semibold">
+                    {existingAccount ? 'Edit Account' : 'Add Account'}
+                  </h2>
+                  <p className="text-fog text-sm">Track your assets & liabilities</p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="w-8 h-8 rounded-lg bg-iron-slate/50 flex items-center justify-center text-fog hover:text-bone hover:bg-iron-slate transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit}>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs text-stone uppercase tracking-wider mb-2 block">
+                    Account Name
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Main Checking"
+                    className="input w-full"
+                    autoFocus
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-stone uppercase tracking-wider mb-2 block">
+                    Account Type
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {ACCOUNT_TYPES.map((t) => (
+                      <button
+                        key={t.value}
+                        type="button"
+                        onClick={() => setType(t.value as FinanceAccount['type'])}
+                        className={`p-2 rounded-lg text-xs font-medium transition-all ${
+                          type === t.value
+                            ? t.is_asset
+                              ? 'bg-victory-green/20 text-victory-green border border-victory-green/30'
+                              : 'bg-blood-red/20 text-blood-red border border-blood-red/30'
+                            : 'glass-recessed text-fog hover:text-bone'
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2">
+                    <label className="text-xs text-stone uppercase tracking-wider mb-2 block">
+                      Balance
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={balance}
+                      onChange={(e) => setBalance(e.target.value)}
+                      placeholder="0.00"
+                      className="input w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-stone uppercase tracking-wider mb-2 block">
+                      Currency
+                    </label>
+                    <select
+                      value={currency}
+                      onChange={(e) => setCurrency(e.target.value)}
+                      className="input w-full"
+                    >
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                      <option value="GBP">GBP</option>
+                      <option value="CAD">CAD</option>
+                      <option value="AUD">AUD</option>
+                      <option value="JPY">JPY</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-stone uppercase tracking-wider mb-2 block">
+                    Institution (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={institution}
+                    onChange={(e) => setInstitution(e.target.value)}
+                    placeholder="e.g. Chase Bank"
+                    className="input w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-stone uppercase tracking-wider mb-2 block">
+                    Notes (optional)
+                  </label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Any additional notes..."
+                    className="input w-full resize-none"
+                    rows={2}
+                  />
+                </div>
+              </div>
+
+              <button type="submit" className="btn-primary w-full mt-6">
+                {existingAccount ? 'Update Account' : 'Add Account'}
+              </button>
+
+              {existingAccount && onDelete && (
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  className="w-full mt-3 py-2 text-blood-red hover:text-blood-red/80 text-sm transition-colors flex items-center justify-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete Account
+                </button>
+              )}
+            </form>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
+// Supplement Detail Modal
+function SupplementDetailModal({
+  isOpen,
+  onClose,
+  supplement,
+  phaseColor,
+  phaseBgColor,
+}: {
+  isOpen: boolean
+  onClose: () => void
+  supplement: SupplementItem | null
+  phaseColor: string
+  phaseBgColor: string
+}) {
+  if (!supplement) return null
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="absolute inset-0 bg-forge-black/60 backdrop-blur-sm"
+            onClick={onClose}
+          />
+          <motion.div
+            className="glass-modal p-5 sm:p-8 w-full max-w-md relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          >
+            <div className="flex justify-between items-start mb-6">
+              <div className="flex items-start gap-3">
+                <div className={`w-10 h-10 rounded-lg ${phaseBgColor} flex items-center justify-center shrink-0`}>
+                  <Pill className={`w-5 h-5 ${phaseColor}`} />
+                </div>
+                <div>
+                  <h2 className="font-display text-xl font-semibold text-bone">{supplement.name}</h2>
+                  <p className={`text-sm ${phaseColor}`}>{supplement.effect}</p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="w-8 h-8 rounded-lg bg-iron-slate/50 flex items-center justify-center text-fog hover:text-bone hover:bg-iron-slate transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Dosage Info */}
+            <div className="glass-recessed rounded-lg p-4 mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Beaker className="w-4 h-4 text-fog" />
+                <span className="text-xs text-stone uppercase tracking-wider">Dosage</span>
+              </div>
+              <p className="text-lg font-mono text-bone">{supplement.dosage}</p>
+              {supplement.measurement && (
+                <p className="text-sm text-fog mt-1">{supplement.measurement}</p>
+              )}
+            </div>
+
+            {/* How It Works */}
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Info className="w-4 h-4 text-fog" />
+                <span className="text-xs text-stone uppercase tracking-wider">How It Works</span>
+              </div>
+              <p className="text-sm text-fog leading-relaxed">{supplement.details}</p>
+            </div>
+
+            {/* Substitute Info */}
+            {supplement.substituteFor && (
+              <div className="glass-recessed rounded-lg p-3 mb-4 border border-fjord/30">
+                <p className="text-sm text-fjord">
+                  <span className="font-medium">Substitute for:</span> {supplement.substituteFor}
+                </p>
+              </div>
+            )}
+
+            {/* Warning */}
+            {supplement.warning && (
+              <div className="rounded-lg p-3 mb-4 bg-blood-red/10 border border-blood-red/30">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-blood-red shrink-0 mt-0.5" />
+                  <p className="text-sm text-blood-red">{supplement.warning}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Optional Badge */}
+            {supplement.optional && (
+              <div className="flex items-center gap-2 text-sm text-stone">
+                <Sparkles className="w-4 h-4" />
+                <span>This supplement is optional based on availability</span>
+              </div>
+            )}
+
+            <button
+              onClick={onClose}
+              className="btn-primary w-full mt-6"
+            >
+              Got It
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
 // Direction tabs configuration
 const DIRECTIONS = [
   { id: 'overview', label: 'Overview', icon: CompassIcon },
   { id: 'nutrition', label: 'Nutrition', icon: Flame },
   { id: 'habits', label: 'Habits', icon: CheckSquare },
+  { id: 'finance', label: 'Finance', icon: DollarSign },
+  { id: 'routine', label: 'Routine', icon: Zap },
   { id: 'messages', label: 'Messages', icon: Mail },
   { id: 'bearings', label: 'Bearings', icon: BookOpen },
   { id: 'truenorth', label: 'True North', icon: Star },
@@ -2749,34 +3628,93 @@ function ModeToggle({ mode, onToggle }: { mode: 'view' | 'log'; onToggle: () => 
 // Main Dashboard Component
 export default function KnarrDashboard() {
   const { user, isLoading: authLoading, isConfigured, signOut } = useAuth()
+
+  // Data from hook (supports both localStorage and Supabase)
+  const {
+    isLoading: dataLoading,
+    dataLoaded,
+    useSupabase,
+    calories,
+    weights,
+    habits,
+    habitLogs,
+    tasks,
+    headings,
+    messages,
+    bearings,
+    lifeGoals,
+    waypoints,
+    userName,
+    weightGoal,
+    calorieGoal,
+    addCalorie,
+    addWeight,
+    addHabit,
+    updateHabit,
+    deleteHabit,
+    toggleHabitLog,
+    addTask,
+    completeTask,
+    deleteTask,
+    setHeading,
+    addMessage,
+    markMessageRead,
+    addBearing,
+    addLifeGoal,
+    updateLifeGoal,
+    deleteLifeGoal,
+    addWaypoint,
+    deleteWaypoint,
+    setUserName,
+    setWeightGoal,
+    setCalorieGoal,
+    getOnboardingComplete,
+    setOnboardingComplete,
+    getTutorialComplete,
+    setTutorialComplete,
+    clearAllData,
+    // Finance data and operations
+    financeAccounts,
+    financeTransactions,
+    netWorthSnapshots,
+    financeEncryptionKey,
+    setFinanceEncryptionKey,
+    hasFinanceKey,
+    addFinanceAccount,
+    updateFinanceAccount,
+    deleteFinanceAccount,
+    addFinanceTransaction,
+    deleteFinanceTransaction,
+    takeNetWorthSnapshot,
+  } = useKnarrData()
+
   const [mounted, setMounted] = useState(false)
-  const [userName, setUserName] = useState('Voyager')
   const [mode, setMode] = useState<'view' | 'log'>('view')
+  const [selectedLogDate, setSelectedLogDate] = useState<string>(getTodayString())
   const [modalType, setModalType] = useState<'calories' | 'weight' | 'heading' | null>(null)
   const [showWeightGoalModal, setShowWeightGoalModal] = useState(false)
   const [showWriteMessageModal, setShowWriteMessageModal] = useState(false)
   const [showHabitModal, setShowHabitModal] = useState(false)
   const [activeTab, setActiveTab] = useState<DirectionTab>('overview')
-
-  // Data state
-  const [calories, setCalories] = useState<CalorieLog[]>([])
-  const [weights, setWeights] = useState<WeightEntry[]>([])
-  const [habits, setHabits] = useState<Habit[]>([])
-  const [habitLogs, setHabitLogs] = useState<HabitLog[]>([])
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [headings, setHeadings] = useState<Heading[]>([])
-  const [weightGoal, setWeightGoal] = useState<number | null>(null)
-  const [calorieGoal, setCalorieGoal] = useState<number | null>(null)
   const [showCalorieGoalModal, setShowCalorieGoalModal] = useState(false)
-  const [messages, setMessages] = useState<Message[]>([])
-  const [bearings, setBearings] = useState<Bearing[]>([])
   const [showBearingModal, setShowBearingModal] = useState(false)
   const [bearingType, setBearingType] = useState<'weekly' | 'monthly'>('weekly')
-  const [lifeGoals, setLifeGoals] = useState<LifeGoal[]>([])
   const [showTrueNorthModal, setShowTrueNorthModal] = useState(false)
   const [editingGoal, setEditingGoal] = useState<LifeGoal | undefined>(undefined)
-  const [waypoints, setWaypoints] = useState<Waypoint[]>([])
   const [showWaypointModal, setShowWaypointModal] = useState(false)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
+
+  // Finance state
+  const [showFinanceSetupModal, setShowFinanceSetupModal] = useState(false)
+  const [showAddAccountModal, setShowAddAccountModal] = useState(false)
+  const [editingAccount, setEditingAccount] = useState<FinanceAccount | null>(null)
+  const [financeSetupKey, setFinanceSetupKey] = useState('')
+
+  // Dopamine Routine state
+  const [activeRoutinePhase, setActiveRoutinePhase] = useState<RoutinePhase | 'all'>('all')
+  const [selectedSupplement, setSelectedSupplement] = useState<SupplementItem | null>(null)
+  const [selectedSupplementPhase, setSelectedSupplementPhase] = useState<RoutinePhaseData | null>(null)
+  const [showSupplementModal, setShowSupplementModal] = useState(false)
 
   // Message delivery popup state
   const [showMessagePopup, setShowMessagePopup] = useState(false)
@@ -2847,37 +3785,17 @@ export default function KnarrDashboard() {
 
   const today = getTodayString()
 
-  // Load from localStorage on mount
+  // Check onboarding status on mount
   useEffect(() => {
     setMounted(true)
 
-    // Check onboarding status
-    const onboardingDone = getFromStorage<boolean>(STORAGE_KEYS.onboardingComplete, false)
+    // Check onboarding status (settings stored locally)
+    const onboardingDone = getOnboardingComplete()
     setHasCompletedOnboarding(onboardingDone)
     if (!onboardingDone) {
       setShowOnboarding(true)
     }
-
-    // Load user name
-    const savedName = getFromStorage<string>(STORAGE_KEYS.userName, 'Voyager')
-    setUserName(savedName)
-
-    // Load data
-    setCalories(getFromStorage(STORAGE_KEYS.calories, []))
-    setWeights(getFromStorage(STORAGE_KEYS.weights, []))
-    setHabits(getFromStorage(STORAGE_KEYS.habits, []))
-    setHabitLogs(getFromStorage(STORAGE_KEYS.habitLogs, []))
-    setTasks(getFromStorage(STORAGE_KEYS.tasks, []))
-    setHeadings(getFromStorage(STORAGE_KEYS.headings, []))
-    const savedGoal = getFromStorage<number | null>(STORAGE_KEYS.weightGoal, null)
-    setWeightGoal(savedGoal && savedGoal > 0 ? savedGoal : null)
-    const savedCalorieGoal = getFromStorage<number | null>(STORAGE_KEYS.calorieGoal, null)
-    setCalorieGoal(savedCalorieGoal && savedCalorieGoal > 0 ? savedCalorieGoal : null)
-    setMessages(getFromStorage(STORAGE_KEYS.messages, []))
-    setBearings(getFromStorage(STORAGE_KEYS.bearings, []))
-    setLifeGoals(getFromStorage(STORAGE_KEYS.lifeGoals, []))
-    setWaypoints(getFromStorage(STORAGE_KEYS.waypoints, []))
-  }, [])
+  }, [getOnboardingComplete])
 
   // Check for delivered messages on load
   useEffect(() => {
@@ -2902,6 +3820,14 @@ export default function KnarrDashboard() {
   const todayHabitLogs = habitLogs.filter(l => l.date === today)
   const activeHabits = habits.filter(h => h.active)
   const completedHabits = todayHabitLogs.filter(l => l.completed).length
+
+  // Selected date's data (for Log mode historical logging)
+  const isLoggingToday = selectedLogDate === today
+  const selectedDateCalories = calories.find(c => c.date === selectedLogDate)
+  const selectedDateWeight = weights.find(w => w.date === selectedLogDate)
+  const selectedDateHeading = headings.find(h => h.date === selectedLogDate)
+  const selectedDateHabitLogs = habitLogs.filter(l => l.date === selectedLogDate)
+  const selectedDateCompletedHabits = selectedDateHabitLogs.filter(l => l.completed).length
 
   // Today's tasks: scheduled for today OR no date specified (and not completed)
   const todayTasks = tasks.filter(t =>
@@ -3006,8 +3932,10 @@ export default function KnarrDashboard() {
     ? getProgressToGoal(rollingAverage, weightGoal)
     : null
 
-  // Streak calculations
-  const calorieStreak = calories.length
+  // Streak calculations - using new grace day recovery system
+  const uniqueCalorieDatesSet = new Set(calories.map(c => c.date))
+  const streakResult = calculateStreakWithGrace(uniqueCalorieDatesSet)
+  const calorieStreak = streakResult.count
   const habitStreak = habitLogs.filter(l => l.completed).length > 0 ?
     Math.floor(habitLogs.filter(l => l.completed).length / Math.max(1, activeHabits.length)) : 0
 
@@ -3031,182 +3959,121 @@ export default function KnarrDashboard() {
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 4)
 
-  // Handlers
+  // Handlers - now use hook methods
   const handleLogCalories = (value: string, date: string) => {
-    const newLog: CalorieLog = {
-      id: crypto.randomUUID(),
-      date: date,
-      calories: parseInt(value),
-      created_at: new Date().toISOString(),
+    const numValue = parseInt(value)
+    if (!isNaN(numValue)) {
+      addCalorie(date, numValue)
     }
-    // Replace entry for the same date if it exists
-    const updated = [...calories.filter(c => c.date !== date), newLog]
-    setCalories(updated)
-    setToStorage(STORAGE_KEYS.calories, updated)
   }
 
   const handleLogWeight = (value: string, date: string) => {
-    const newEntry: WeightEntry = {
-      id: crypto.randomUUID(),
-      date: date,
-      weight: parseFloat(value),
-      created_at: new Date().toISOString(),
+    const numValue = parseFloat(value)
+    if (!isNaN(numValue)) {
+      addWeight(date, numValue)
     }
-    // Replace entry for the same date if it exists
-    const updated = [...weights.filter(w => w.date !== date), newEntry]
-    setWeights(updated)
-    setToStorage(STORAGE_KEYS.weights, updated)
   }
 
-  const handleSetHeading = (value: string, _date: string) => {
-    // Headings always use today - historical headings don't make sense
-    const newHeading: Heading = {
-      id: crypto.randomUUID(),
-      date: today,
-      intention: value,
-      completed: false,
+  const handleSetHeadingLocal = (value: string, date: string) => {
+    if (value.trim()) {
+      setHeading(date, value)
     }
-    const updated = [...headings.filter(h => h.date !== today), newHeading]
-    setHeadings(updated)
-    setToStorage(STORAGE_KEYS.headings, updated)
   }
 
   const toggleHabit = (habitId: string) => {
-    const existingLog = todayHabitLogs.find(l => l.habit_id === habitId)
+    toggleHabitLog(habitId, today)
+  }
 
-    if (existingLog) {
-      const updated = habitLogs.map(l =>
-        l.id === existingLog.id ? { ...l, completed: !l.completed } : l
-      )
-      setHabitLogs(updated)
-      setToStorage(STORAGE_KEYS.habitLogs, updated)
-    } else {
-      const newLog: HabitLog = {
-        id: crypto.randomUUID(),
-        habit_id: habitId,
-        date: today,
-        completed: true,
-      }
-      const updated = [...habitLogs, newLog]
-      setHabitLogs(updated)
-      setToStorage(STORAGE_KEYS.habitLogs, updated)
-    }
+  // Toggle habit for a specific date (used in Log mode with historical date)
+  const toggleHabitForDate = (habitId: string, date: string) => {
+    toggleHabitLog(habitId, date)
   }
 
   const handleSetWeightGoal = (goal: number) => {
     if (goal === 0) {
       setWeightGoal(null)
-      setToStorage(STORAGE_KEYS.weightGoal, null)
     } else {
       setWeightGoal(goal)
-      setToStorage(STORAGE_KEYS.weightGoal, goal)
     }
   }
 
   const handleSetCalorieGoal = (goal: number) => {
     if (goal === 0) {
       setCalorieGoal(null)
-      setToStorage(STORAGE_KEYS.calorieGoal, null)
     } else {
       setCalorieGoal(goal)
-      setToStorage(STORAGE_KEYS.calorieGoal, goal)
     }
   }
 
-  const loadSampleWeightData = () => {
-    const sampleWeights: WeightEntry[] = []
+  // Settings handlers - now use hook methods
+  const handleUpdateUserName = (name: string) => {
+    setUserName(name)
+  }
+
+  const handleUpdateCalorieGoalFromSettings = (goal: number | null) => {
+    setCalorieGoal(goal)
+  }
+
+  const handleUpdateWeightGoalFromSettings = (goal: number | null) => {
+    setWeightGoal(goal)
+  }
+
+  const handleClearAllData = () => {
+    clearAllData()
+    setHasCompletedOnboarding(false)
+    setShowOnboarding(true)
+  }
+
+  const handleResetOnboarding = () => {
+    setOnboardingComplete(false)
+    setTutorialComplete(false)
+    setHasCompletedOnboarding(false)
+    setShowOnboarding(true)
+  }
+
+  const loadSampleWeightData = async () => {
     const baseWeight = 85
     for (let i = 13; i >= 0; i--) {
       const date = new Date()
       date.setDate(date.getDate() - i)
       const variation = (Math.random() - 0.5) * 1.5 - (i * 0.08) // Slight downward trend
-      sampleWeights.push({
-        id: crypto.randomUUID(),
-        date: date.toISOString().split('T')[0]!,
-        weight: Math.round((baseWeight + variation) * 10) / 10,
-        created_at: date.toISOString(),
-      })
+      const weight = Math.round((baseWeight + variation) * 10) / 10
+      await addWeight(date.toISOString().split('T')[0]!, weight)
     }
-    setWeights(sampleWeights)
-    setToStorage(STORAGE_KEYS.weights, sampleWeights)
     if (!weightGoal) {
       setWeightGoal(80)
-      setToStorage(STORAGE_KEYS.weightGoal, 80)
     }
   }
 
-  const loadSampleCalorieData = () => {
-    const sampleCalories: CalorieLog[] = []
+  const loadSampleCalorieData = async () => {
     const baseCalories = 2000
     for (let i = 13; i >= 0; i--) {
       const date = new Date()
       date.setDate(date.getDate() - i)
       const variation = Math.floor((Math.random() - 0.5) * 600) // +/- 300 calories
-      sampleCalories.push({
-        id: crypto.randomUUID(),
-        date: date.toISOString().split('T')[0]!,
-        calories: baseCalories + variation,
-        created_at: date.toISOString(),
-      })
+      await addCalorie(date.toISOString().split('T')[0]!, baseCalories + variation)
     }
-    setCalories(sampleCalories)
-    setToStorage(STORAGE_KEYS.calories, sampleCalories)
     if (!calorieGoal) {
       setCalorieGoal(2000)
-      setToStorage(STORAGE_KEYS.calorieGoal, 2000)
     }
   }
 
-  const loadSampleHabitData = () => {
-    // Create sample habits if none exist
-    const sampleHabits: Habit[] = [
-      { id: crypto.randomUUID(), name: 'Morning workout', active: true },
-      { id: crypto.randomUUID(), name: 'Read 30 minutes', active: true },
-      { id: crypto.randomUUID(), name: 'Drink 8 glasses of water', active: true },
-      { id: crypto.randomUUID(), name: 'Meditate', active: true },
-    ]
-    setHabits(sampleHabits)
-    setToStorage(STORAGE_KEYS.habits, sampleHabits)
-
-    // Create sample habit logs for the past 14 days
-    const sampleLogs: HabitLog[] = []
-    for (let i = 13; i >= 0; i--) {
-      const date = new Date()
-      date.setDate(date.getDate() - i)
-      const dateStr = date.toISOString().split('T')[0]!
-
-      sampleHabits.forEach(habit => {
-        // Random completion rate ~70%
-        const completed = Math.random() > 0.3
-        sampleLogs.push({
-          id: crypto.randomUUID(),
-          habit_id: habit.id,
-          date: dateStr,
-          completed,
-        })
-      })
+  const loadSampleHabitData = async () => {
+    // Create sample habits
+    const habitNames = ['Morning workout', 'Read 30 minutes', 'Drink 8 glasses of water', 'Meditate']
+    for (const name of habitNames) {
+      await addHabit(name)
     }
-    setHabitLogs(sampleLogs)
-    setToStorage(STORAGE_KEYS.habitLogs, sampleLogs)
+    // Note: Habit logs would need to be created separately after habits are created
+    // For simplicity, sample habits are created without historical logs
   }
 
   const handleAddMessage = (messageData: Omit<Message, 'id' | 'read'>) => {
-    const newMessage: Message = {
-      ...messageData,
-      id: crypto.randomUUID(),
-      read: false,
-    }
-    const updated = [...messages, newMessage]
-    setMessages(updated)
-    setToStorage(STORAGE_KEYS.messages, updated)
+    addMessage(messageData)
   }
 
   const handleMarkMessageRead = (id: string) => {
-    const updated = messages.map(m =>
-      m.id === id ? { ...m, read: true } : m
-    )
-    setMessages(updated)
-    setToStorage(STORAGE_KEYS.messages, updated)
+    markMessageRead(id)
   }
 
   const handleCloseMessagePopup = () => {
@@ -3226,67 +4093,35 @@ export default function KnarrDashboard() {
   }
 
   const handleAddHabit = (name: string) => {
-    const newHabit: Habit = {
-      id: crypto.randomUUID(),
-      name,
-      active: true,
-    }
-    const updated = [...habits, newHabit]
-    setHabits(updated)
-    setToStorage(STORAGE_KEYS.habits, updated)
+    addHabit(name)
   }
 
   const handleEditHabit = (id: string, name: string) => {
-    const updated = habits.map(h =>
-      h.id === id ? { ...h, name } : h
-    )
-    setHabits(updated)
-    setToStorage(STORAGE_KEYS.habits, updated)
+    updateHabit(id, { name })
   }
 
   const handleDeleteHabit = (id: string) => {
-    const updated = habits.filter(h => h.id !== id)
-    setHabits(updated)
-    setToStorage(STORAGE_KEYS.habits, updated)
-    // Also clean up habit logs for this habit
-    const updatedLogs = habitLogs.filter(l => l.habit_id !== id)
-    setHabitLogs(updatedLogs)
-    setToStorage(STORAGE_KEYS.habitLogs, updatedLogs)
+    deleteHabit(id)
   }
 
   const handleToggleHabitActive = (id: string) => {
-    const updated = habits.map(h =>
-      h.id === id ? { ...h, active: !h.active } : h
-    )
-    setHabits(updated)
-    setToStorage(STORAGE_KEYS.habits, updated)
+    const habit = habits.find(h => h.id === id)
+    if (habit) {
+      updateHabit(id, { active: !habit.active })
+    }
   }
 
   // Task handlers
   const handleAddTask = (name: string, scheduledDate?: string) => {
-    const newTask: Task = {
-      id: crypto.randomUUID(),
-      name,
-      scheduled_date: scheduledDate || null,
-      completed: false,
-      completed_at: null,
-      created_at: new Date().toISOString(),
-    }
-    const updated = [...tasks, newTask]
-    setTasks(updated)
-    setToStorage(STORAGE_KEYS.tasks, updated)
+    addTask(name, scheduledDate)
   }
 
   const handleCompleteTask = (id: string) => {
     // Add to completing set for animation
     setCompletingTaskIds(prev => new Set(prev).add(id))
 
-    // Mark as completed with timestamp
-    const updated = tasks.map(t =>
-      t.id === id ? { ...t, completed: true, completed_at: new Date().toISOString() } : t
-    )
-    setTasks(updated)
-    setToStorage(STORAGE_KEYS.tasks, updated)
+    // Mark as completed via hook
+    completeTask(id)
 
     // Clear animation state after animation completes
     setTimeout(() => {
@@ -3299,43 +4134,18 @@ export default function KnarrDashboard() {
   }
 
   const handleDeleteTask = (id: string) => {
-    const updated = tasks.filter(t => t.id !== id)
-    setTasks(updated)
-    setToStorage(STORAGE_KEYS.tasks, updated)
+    deleteTask(id)
   }
 
   const handleClearCompletedTasks = () => {
-    const updated = tasks.filter(t => !t.completed)
-    setTasks(updated)
-    setToStorage(STORAGE_KEYS.tasks, updated)
+    // Delete each completed task
+    const completed = tasks.filter(t => t.completed)
+    completed.forEach(t => deleteTask(t.id))
   }
 
   const handleSaveBearing = (bearingData: Omit<Bearing, 'id' | 'created_at'>) => {
-    // Check if a bearing for this period already exists
-    const existingIndex = bearings.findIndex(
-      b => b.type === bearingData.type && b.period_start === bearingData.period_start
-    )
-
-    if (existingIndex !== -1) {
-      // Update existing bearing
-      const updated = [...bearings]
-      updated[existingIndex] = {
-        ...bearings[existingIndex]!,
-        ...bearingData
-      }
-      setBearings(updated)
-      setToStorage(STORAGE_KEYS.bearings, updated)
-    } else {
-      // Create new bearing
-      const newBearing: Bearing = {
-        ...bearingData,
-        id: crypto.randomUUID(),
-        created_at: new Date().toISOString()
-      }
-      const updated = [...bearings, newBearing]
-      setBearings(updated)
-      setToStorage(STORAGE_KEYS.bearings, updated)
-    }
+    // The hook handles upsert logic internally
+    addBearing(bearingData)
   }
 
   const openBearingModal = (type: 'weekly' | 'monthly') => {
@@ -3346,38 +4156,20 @@ export default function KnarrDashboard() {
   const handleAddLifeGoal = (goalData: Omit<LifeGoal, 'id' | 'created_at' | 'progress'>) => {
     if (editingGoal) {
       // Update existing goal
-      const updated = lifeGoals.map(g =>
-        g.id === editingGoal.id ? { ...g, ...goalData } : g
-      )
-      setLifeGoals(updated)
-      setToStorage(STORAGE_KEYS.lifeGoals, updated)
+      updateLifeGoal(editingGoal.id, goalData)
     } else {
       // Create new goal
-      const newGoal: LifeGoal = {
-        ...goalData,
-        id: crypto.randomUUID(),
-        progress: 0,
-        created_at: new Date().toISOString()
-      }
-      const updated = [...lifeGoals, newGoal]
-      setLifeGoals(updated)
-      setToStorage(STORAGE_KEYS.lifeGoals, updated)
+      addLifeGoal({ ...goalData, progress: 0 })
     }
     setEditingGoal(undefined)
   }
 
   const handleUpdateGoalProgress = (goalId: string, progress: number) => {
-    const updated = lifeGoals.map(g =>
-      g.id === goalId ? { ...g, progress } : g
-    )
-    setLifeGoals(updated)
-    setToStorage(STORAGE_KEYS.lifeGoals, updated)
+    updateLifeGoal(goalId, { progress })
   }
 
   const handleDeleteLifeGoal = (goalId: string) => {
-    const updated = lifeGoals.filter(g => g.id !== goalId)
-    setLifeGoals(updated)
-    setToStorage(STORAGE_KEYS.lifeGoals, updated)
+    deleteLifeGoal(goalId)
   }
 
   const openEditGoal = (goal: LifeGoal) => {
@@ -3386,20 +4178,11 @@ export default function KnarrDashboard() {
   }
 
   const handleAddWaypoint = (waypointData: Omit<Waypoint, 'id' | 'created_at'>) => {
-    const newWaypoint: Waypoint = {
-      ...waypointData,
-      id: crypto.randomUUID(),
-      created_at: new Date().toISOString()
-    }
-    const updated = [...waypoints, newWaypoint]
-    setWaypoints(updated)
-    setToStorage(STORAGE_KEYS.waypoints, updated)
+    addWaypoint(waypointData)
   }
 
   const handleDeleteWaypoint = (waypointId: string) => {
-    const updated = waypoints.filter(w => w.id !== waypointId)
-    setWaypoints(updated)
-    setToStorage(STORAGE_KEYS.waypoints, updated)
+    deleteWaypoint(waypointId)
   }
 
   // Onboarding completion handler
@@ -3411,51 +4194,33 @@ export default function KnarrDashboard() {
     calorieGoal: number | null
     initialHabits: string[]
   }) => {
-    // Save user name
+    // Save user name (hook method handles storage)
     setUserName(data.name)
-    setToStorage(STORAGE_KEYS.userName, data.name)
 
     // Save weight goal if provided
     if (data.weightGoal) {
       setWeightGoal(data.weightGoal)
-      setToStorage(STORAGE_KEYS.weightGoal, data.weightGoal)
     }
 
     // Save calorie goal if provided
     if (data.calorieGoal) {
       setCalorieGoal(data.calorieGoal)
-      setToStorage(STORAGE_KEYS.calorieGoal, data.calorieGoal)
     }
 
     // Add current weight as first entry if provided
     if (data.currentWeight) {
-      const weightEntry: WeightEntry = {
-        id: crypto.randomUUID(),
-        date: today,
-        weight: data.currentWeight,
-        created_at: new Date().toISOString()
-      }
-      const updatedWeights = [...weights, weightEntry]
-      setWeights(updatedWeights)
-      setToStorage(STORAGE_KEYS.weights, updatedWeights)
+      addWeight(today, data.currentWeight)
     }
 
     // Create initial habits
     if (data.initialHabits.length > 0) {
-      const newHabits: Habit[] = data.initialHabits.map(name => ({
-        id: crypto.randomUUID(),
-        name,
-        active: true
-      }))
-      const updatedHabits = [...habits, ...newHabits]
-      setHabits(updatedHabits)
-      setToStorage(STORAGE_KEYS.habits, updatedHabits)
+      data.initialHabits.forEach(name => addHabit(name))
     }
 
     // Mark onboarding as complete and start tutorial
     setHasCompletedOnboarding(true)
     setShowOnboarding(false)
-    setToStorage(STORAGE_KEYS.onboardingComplete, true)
+    setOnboardingComplete(true)
 
     // Start the tutorial after a brief delay to let the dashboard render
     setTimeout(() => {
@@ -3466,20 +4231,18 @@ export default function KnarrDashboard() {
   // Tutorial completion handlers
   const handleTutorialComplete = () => {
     setShowTutorial(false)
-    setToStorage(STORAGE_KEYS.tutorialComplete, true)
+    setTutorialComplete(true)
   }
 
   const handleTutorialSkip = () => {
     setShowTutorial(false)
-    setToStorage(STORAGE_KEYS.tutorialComplete, true)
+    setTutorialComplete(true)
   }
 
   // Sign out and reset all app state (for testing)
   const handleSignOutAndReset = async () => {
-    // Clear all localStorage keys
-    Object.values(STORAGE_KEYS).forEach(key => {
-      localStorage.removeItem(key)
-    })
+    // Use hook method to clear all data
+    await clearAllData()
 
     // Reset state
     setHasCompletedOnboarding(false)
@@ -3614,6 +4377,13 @@ export default function KnarrDashboard() {
                   </p>
                 </div>
                 <button
+                  onClick={() => setShowSettingsModal(true)}
+                  className="p-2 rounded-lg text-fog hover:text-bone hover:bg-white/5 transition-colors"
+                  title="Settings"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+                <button
                   onClick={handleSignOutAndReset}
                   className="p-2 rounded-lg text-fog hover:text-bone hover:bg-white/5 transition-colors"
                   title="Sign out & reset"
@@ -3624,6 +4394,11 @@ export default function KnarrDashboard() {
             </div>
           </div>
         </header>
+
+        {/* Anchor Streak Bar - Visible in both modes when user has started logging */}
+        {streakResult.count > 0 && (
+          <AnchorStreakBar streakData={streakResult} />
+        )}
 
         <main className="max-w-6xl mx-auto px-3 sm:px-6 py-3 sm:py-4 safe-area-bottom">
           <div className="glass-main p-4 sm:p-6">
@@ -3637,17 +4412,75 @@ export default function KnarrDashboard() {
               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.3 }}
             >
+              {/* Date Selector for Historical Logging */}
+              <div className="mb-4 sm:mb-6">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        const current = new Date(selectedLogDate + 'T00:00:00')
+                        current.setDate(current.getDate() - 1)
+                        setSelectedLogDate(current.toISOString().split('T')[0] ?? '')
+                      }}
+                      className="w-8 h-8 rounded-lg glass-recessed flex items-center justify-center text-fog hover:text-bone transition-colors"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-ember" />
+                      <input
+                        type="date"
+                        value={selectedLogDate}
+                        max={today}
+                        onChange={(e) => setSelectedLogDate(e.target.value || today)}
+                        className="glass-recessed px-3 py-1.5 rounded-lg text-sm text-bone focus:outline-none focus:ring-1 focus:ring-ember/50"
+                      />
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (selectedLogDate < today) {
+                          const current = new Date(selectedLogDate + 'T00:00:00')
+                          current.setDate(current.getDate() + 1)
+                          const newDate = current.toISOString().split('T')[0] ?? ''
+                          if (newDate <= today) {
+                            setSelectedLogDate(newDate)
+                          }
+                        }
+                      }}
+                      disabled={isLoggingToday}
+                      className="w-8 h-8 rounded-lg glass-recessed flex items-center justify-center text-fog hover:text-bone transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {!isLoggingToday && (
+                    <button
+                      onClick={() => setSelectedLogDate(today)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-ember/20 text-ember hover:bg-ember/30 transition-colors flex items-center gap-1.5"
+                    >
+                      Back to Today
+                    </button>
+                  )}
+                </div>
+                {!isLoggingToday && (
+                  <p className="text-xs text-fjord mt-2 flex items-center gap-1.5">
+                    <Calendar className="w-3 h-3" />
+                    Logging for {formatShortDate(selectedLogDate)}
+                  </p>
+                )}
+              </div>
+
               {/* Today's Heading */}
               <div className="mb-4 sm:mb-6">
                 <h2 className="text-xs text-stone uppercase tracking-wider mb-2 flex items-center gap-2">
                   <Target className="w-3.5 h-3.5 text-ember" />
-                  Today's Heading
+                  {isLoggingToday ? "Today's Heading" : `Heading for ${formatShortDate(selectedLogDate)}`}
                 </h2>
                 <input
                   type="text"
-                  value={todayHeading?.intention ?? ''}
-                  onChange={(e) => handleSetHeading(e.target.value, today)}
-                  placeholder="What's your focus for today?"
+                  value={selectedDateHeading?.intention ?? ''}
+                  onChange={(e) => handleSetHeadingLocal(e.target.value, selectedLogDate)}
+                  placeholder={isLoggingToday ? "What's your focus for today?" : "What was your focus?"}
                   className="input w-full"
                 />
               </div>
@@ -3663,8 +4496,8 @@ export default function KnarrDashboard() {
                   <input
                     type="number"
                     inputMode="numeric"
-                    value={todayCalories?.calories ?? ''}
-                    onChange={(e) => e.target.value && handleLogCalories(e.target.value, today)}
+                    value={selectedDateCalories?.calories ?? ''}
+                    onChange={(e) => e.target.value && handleLogCalories(e.target.value, selectedLogDate)}
                     placeholder="0"
                     className="bg-transparent w-full font-mono text-xl sm:text-2xl text-bone focus:outline-none"
                     style={{ fontSize: '16px' }}
@@ -3684,8 +4517,8 @@ export default function KnarrDashboard() {
                     type="number"
                     inputMode="decimal"
                     step="0.1"
-                    value={todayWeight?.weight ?? ''}
-                    onChange={(e) => e.target.value && handleLogWeight(e.target.value, today)}
+                    value={selectedDateWeight?.weight ?? ''}
+                    onChange={(e) => e.target.value && handleLogWeight(e.target.value, selectedLogDate)}
                     placeholder="0.0"
                     className="bg-transparent w-full font-mono text-xl sm:text-2xl text-bone focus:outline-none"
                     style={{ fontSize: '16px' }}
@@ -3712,7 +4545,7 @@ export default function KnarrDashboard() {
                     Habits
                   </label>
                   <p className="font-mono text-xl sm:text-2xl">
-                    <span className="text-victory-green">{completedHabits}</span>
+                    <span className="text-victory-green">{selectedDateCompletedHabits}</span>
                     <span className="text-stone">/{activeHabits.length}</span>
                   </p>
                   <p className="text-xs text-stone mt-1">completed</p>
@@ -3724,7 +4557,7 @@ export default function KnarrDashboard() {
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-sm text-bone font-semibold flex items-center gap-2">
                     <CheckSquare className="w-4 h-4 text-victory-green" />
-                    Today's Habits
+                    {isLoggingToday ? "Today's Habits" : `Habits for ${formatShortDate(selectedLogDate)}`}
                   </h2>
                   <button
                     onClick={() => setShowHabitModal(true)}
@@ -3737,11 +4570,11 @@ export default function KnarrDashboard() {
                 {activeHabits.length > 0 ? (
                   <div className="space-y-2">
                     {activeHabits.map(habit => {
-                      const isComplete = todayHabitLogs.find(l => l.habit_id === habit.id)?.completed
+                      const isComplete = selectedDateHabitLogs.find(l => l.habit_id === habit.id)?.completed
                       return (
                         <button
                           key={habit.id}
-                          onClick={() => toggleHabit(habit.id)}
+                          onClick={() => toggleHabitForDate(habit.id, selectedLogDate)}
                           className={`habit-item w-full ${isComplete ? 'complete' : ''}`}
                         >
                           <div className={`habit-checkbox ${isComplete ? 'checked' : ''}`}>
@@ -3997,6 +4830,118 @@ export default function KnarrDashboard() {
                 </div>
               </div>
 
+              {/* Finance Section */}
+              <div className="glass rounded-xl p-4 mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-sm text-bone font-semibold flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-victory-green" />
+                    Net Worth Tracker
+                  </h2>
+                  {hasFinanceKey() && (
+                    <button
+                      onClick={() => setShowAddAccountModal(true)}
+                      className="text-xs text-victory-green hover:text-victory-green/80 transition-colors flex items-center gap-1"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Add Account
+                    </button>
+                  )}
+                </div>
+
+                {!hasFinanceKey() ? (
+                  <div className="text-center py-6">
+                    <DollarSign className="w-10 h-10 text-victory-green/30 mx-auto mb-3" />
+                    <p className="text-sm text-fog mb-3">
+                      Track your finances with client-side encryption
+                    </p>
+                    <p className="text-xs text-stone mb-4">
+                      Your data is encrypted before it leaves your device
+                    </p>
+                    <button
+                      onClick={() => setShowFinanceSetupModal(true)}
+                      className="btn-primary px-6"
+                    >
+                      Setup Finance Tracking
+                    </button>
+                  </div>
+                ) : financeAccounts.length === 0 ? (
+                  <div className="text-center py-4">
+                    <p className="text-stone text-sm mb-3">No accounts yet</p>
+                    <button
+                      onClick={() => setShowAddAccountModal(true)}
+                      className="w-full py-3 rounded-lg border border-dashed border-iron-slate text-stone hover:text-bone hover:border-victory-green/50 transition-all text-sm"
+                    >
+                      Add your first account...
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {/* Net Worth Summary */}
+                    <div className="grid grid-cols-3 gap-3 mb-4">
+                      <div className="glass-recessed rounded-lg p-3 text-center">
+                        <p className="text-xs text-stone uppercase mb-1">Assets</p>
+                        <p className="text-lg font-mono text-victory-green">
+                          ${financeAccounts.filter(a => a.is_asset).reduce((sum, a) => sum + a.balance, 0).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="glass-recessed rounded-lg p-3 text-center">
+                        <p className="text-xs text-stone uppercase mb-1">Liabilities</p>
+                        <p className="text-lg font-mono text-blood-red">
+                          ${financeAccounts.filter(a => !a.is_asset).reduce((sum, a) => sum + a.balance, 0).toLocaleString()}
+                        </p>
+                      </div>
+                      <div className="glass-recessed rounded-lg p-3 text-center">
+                        <p className="text-xs text-stone uppercase mb-1">Net Worth</p>
+                        <p className={`text-lg font-mono ${
+                          financeAccounts.filter(a => a.is_asset).reduce((sum, a) => sum + a.balance, 0) -
+                          financeAccounts.filter(a => !a.is_asset).reduce((sum, a) => sum + a.balance, 0) >= 0
+                            ? 'text-victory-green' : 'text-blood-red'
+                        }`}>
+                          ${(
+                            financeAccounts.filter(a => a.is_asset).reduce((sum, a) => sum + a.balance, 0) -
+                            financeAccounts.filter(a => !a.is_asset).reduce((sum, a) => sum + a.balance, 0)
+                          ).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Account List */}
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {financeAccounts.map(account => (
+                        <button
+                          key={account.id}
+                          onClick={() => {
+                            setEditingAccount(account)
+                            setShowAddAccountModal(true)
+                          }}
+                          className="w-full flex items-center justify-between py-2 px-3 glass-recessed rounded-lg hover:bg-white/5 transition-colors group"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className={`w-2 h-2 rounded-full ${account.is_asset ? 'bg-victory-green' : 'bg-blood-red'}`} />
+                            <span className="text-sm text-bone truncate">{account.name}</span>
+                            <span className="text-xs text-stone">{account.type}</span>
+                          </div>
+                          <span className={`text-sm font-mono ${account.is_asset ? 'text-victory-green' : 'text-blood-red'}`}>
+                            {account.is_asset ? '+' : '-'}${Math.abs(account.balance).toLocaleString()}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Snapshot Button */}
+                    <button
+                      onClick={async () => {
+                        await takeNetWorthSnapshot()
+                      }}
+                      className="w-full mt-3 py-2 rounded-lg text-xs text-stone hover:text-bone border border-iron-slate/50 hover:border-victory-green/30 transition-all flex items-center justify-center gap-2"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Take Net Worth Snapshot
+                    </button>
+                  </>
+                )}
+              </div>
+
               {/* Message & Reflection Row */}
               <div className="grid md:grid-cols-2 gap-4">
                 {/* Message in a Bottle */}
@@ -4033,6 +4978,62 @@ export default function KnarrDashboard() {
                       Monthly
                     </button>
                   </div>
+                </div>
+              </div>
+
+              {/* Life Goals & Waypoints Row */}
+              <div className="grid md:grid-cols-2 gap-4 mt-4">
+                {/* True North / Life Goals */}
+                <div className="glass rounded-xl p-4">
+                  <h2 className="text-sm text-bone font-semibold flex items-center gap-2 mb-3">
+                    <Star className="w-4 h-4 text-ember" />
+                    True North
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setEditingGoal(undefined)
+                      setShowTrueNorthModal(true)
+                    }}
+                    className="w-full py-3 rounded-lg border border-dashed border-iron-slate text-stone hover:text-bone hover:border-ember/50 transition-all text-sm"
+                  >
+                    Set a new life goal...
+                  </button>
+                  {lifeGoals.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-iron-slate/50">
+                      <p className="text-xs text-stone mb-2">Edit existing goals:</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {lifeGoals.slice(0, 3).map(goal => (
+                          <button
+                            key={goal.id}
+                            onClick={() => {
+                              setEditingGoal(goal)
+                              setShowTrueNorthModal(true)
+                            }}
+                            className="px-2 py-1 text-xs bg-iron-slate/30 text-fog hover:text-bone hover:bg-iron-slate/50 rounded-lg transition-colors truncate max-w-[120px]"
+                          >
+                            {goal.title}
+                          </button>
+                        ))}
+                        {lifeGoals.length > 3 && (
+                          <span className="px-2 py-1 text-xs text-stone">+{lifeGoals.length - 3} more</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Log Waypoint */}
+                <div className="glass rounded-xl p-4">
+                  <h2 className="text-sm text-bone font-semibold flex items-center gap-2 mb-3">
+                    <Flag className="w-4 h-4 text-victory-green" />
+                    Log Waypoint
+                  </h2>
+                  <button
+                    onClick={() => setShowWaypointModal(true)}
+                    className="w-full py-3 rounded-lg border border-dashed border-iron-slate text-stone hover:text-bone hover:border-victory-green/50 transition-all text-sm"
+                  >
+                    Record a milestone or achievement...
+                  </button>
                 </div>
               </div>
             </motion.div>
@@ -4206,6 +5207,45 @@ export default function KnarrDashboard() {
               <Target className="w-3.5 h-3.5" />
               Tasks
             </button>
+            <button
+              onClick={() => toggleChartFilter('bearings')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                activeChart === 'bearings'
+                  ? 'bg-fjord/20 text-fjord border border-fjord/30'
+                  : activeChart === null
+                    ? 'bg-fjord/10 text-fjord/70 border border-fjord/20'
+                    : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
+              }`}
+            >
+              <Anchor className="w-3.5 h-3.5" />
+              Bearings
+            </button>
+            <button
+              onClick={() => toggleChartFilter('finance')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                activeChart === 'finance'
+                  ? 'bg-victory-green/20 text-victory-green border border-victory-green/30'
+                  : activeChart === null
+                    ? 'bg-victory-green/10 text-victory-green/70 border border-victory-green/20'
+                    : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
+              }`}
+            >
+              <DollarSign className="w-3.5 h-3.5" />
+              Finance
+            </button>
+            <button
+              onClick={() => toggleChartFilter('routine')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                activeChart === 'routine'
+                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                  : activeChart === null
+                    ? 'bg-amber-500/10 text-amber-400/70 border border-amber-500/20'
+                    : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5" />
+              Routine
+            </button>
           </div>
 
           {/* Weight Chart - Full Width */}
@@ -4322,6 +5362,584 @@ export default function KnarrDashboard() {
             )}
             </div>
           )}
+
+          {/* Bearings (Reflections) Section */}
+          {(activeChart === null || activeChart === 'bearings') && (
+            <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-display text-sm text-bone flex items-center gap-2">
+                  <Anchor className="w-4 h-4 text-fjord" />
+                  Bearings
+                </h3>
+                <span className="text-xs text-stone">Log reflections in Log mode</span>
+              </div>
+
+              {/* Current Period Status */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="glass-recessed rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-stone">This Week</span>
+                    {currentWeekBearing ? (
+                      <span className="text-xs text-victory-green">Logged</span>
+                    ) : (
+                      <span className="text-xs text-ember">Not logged</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-fog">
+                    {formatPeriod(currentWeekBounds.start, currentWeekBounds.end, 'weekly')}
+                  </p>
+                </div>
+                <div className="glass-recessed rounded-lg p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-stone">This Month</span>
+                    {currentMonthBearing ? (
+                      <span className="text-xs text-victory-green">Logged</span>
+                    ) : (
+                      <span className="text-xs text-ember">Not logged</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-fog">
+                    {formatPeriod(currentMonthBounds.start, currentMonthBounds.end, 'monthly')}
+                  </p>
+                </div>
+              </div>
+
+              {/* Recent Bearings */}
+              {recentBearings.length > 0 ? (
+                <div>
+                  <h4 className="text-xs text-stone uppercase tracking-wider mb-3">Recent Reflections</h4>
+                  <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                    {recentBearings.map(bearing => (
+                      <motion.div
+                        key={bearing.id}
+                        className="glass-recessed p-4 rounded-lg"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                      >
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            bearing.type === 'weekly' ? 'bg-fjord/30 text-fjord' : 'bg-ember/30 text-ember'
+                          }`}>
+                            {bearing.type === 'weekly' ? 'Weekly' : 'Monthly'}
+                          </span>
+                          <span className="text-caption text-stone">
+                            {formatPeriod(bearing.period_start, bearing.period_end, bearing.type)}
+                          </span>
+                        </div>
+
+                        {/* Wins */}
+                        {bearing.wins.filter(w => w.trim()).length > 0 && (
+                          <div className="mb-3">
+                            <p className="text-xs text-victory-green mb-1 flex items-center gap-1">
+                              <Trophy className="w-3 h-3" />
+                              Wins
+                            </p>
+                            <ul className="text-fog text-sm space-y-0.5">
+                              {bearing.wins.filter(w => w.trim()).map((win, i) => (
+                                <li key={i} className="flex items-start gap-1.5">
+                                  <span className="text-victory-green">+</span>
+                                  {win}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Challenges */}
+                        {bearing.challenges.filter(c => c.trim()).length > 0 && (
+                          <div className="mb-3">
+                            <p className="text-xs text-ember mb-1 flex items-center gap-1">
+                              <Flag className="w-3 h-3" />
+                              Challenges
+                            </p>
+                            <ul className="text-fog text-sm space-y-0.5">
+                              {bearing.challenges.filter(c => c.trim()).map((challenge, i) => (
+                                <li key={i} className="flex items-start gap-1.5">
+                                  <span className="text-ember">-</span>
+                                  {challenge}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Lessons */}
+                        {bearing.lessons && (
+                          <div className="mb-3">
+                            <p className="text-xs text-fjord mb-1 flex items-center gap-1">
+                              <BookOpen className="w-3 h-3" />
+                              Lessons Learned
+                            </p>
+                            <p className="text-fog text-sm">{bearing.lessons}</p>
+                          </div>
+                        )}
+
+                        {/* Focus */}
+                        {bearing.focus && (
+                          <div className="glass-recessed p-2 rounded text-sm">
+                            <span className="text-caption text-stone">Next Focus: </span>
+                            <span className="text-fog">{bearing.focus}</span>
+                          </div>
+                        )}
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <Anchor className="w-8 h-8 text-stone mx-auto mb-2" />
+                  <p className="text-stone text-sm">No bearings logged yet.</p>
+                  <p className="text-stone text-xs mt-1">
+                    Reflect on your week or month to track your journey.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Finance Section */}
+          {(activeChart === null || activeChart === 'finance') && (
+            <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-display text-sm text-bone flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-victory-green" />
+                  Net Worth
+                </h3>
+                <span className="text-xs text-stone">Manage in Log mode</span>
+              </div>
+
+              {!hasFinanceKey() ? (
+                <div className="text-center py-6">
+                  <DollarSign className="w-8 h-8 text-stone/50 mx-auto mb-2" />
+                  <p className="text-stone text-sm">Finance tracking not set up.</p>
+                  <p className="text-stone/70 text-xs mt-1">Set up encrypted finance tracking in Log mode.</p>
+                </div>
+              ) : financeAccounts.length === 0 ? (
+                <div className="text-center py-6">
+                  <DollarSign className="w-8 h-8 text-stone/50 mx-auto mb-2" />
+                  <p className="text-stone text-sm">No accounts added yet.</p>
+                  <p className="text-stone/70 text-xs mt-1">Add accounts in Log mode to track your net worth.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Net Worth Summary */}
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    <div className="glass-recessed rounded-lg p-3 text-center">
+                      <p className="text-xs text-stone uppercase mb-1">Assets</p>
+                      <p className="text-xl font-mono text-victory-green">
+                        ${financeAccounts.filter(a => a.is_asset).reduce((sum, a) => sum + a.balance, 0).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="glass-recessed rounded-lg p-3 text-center">
+                      <p className="text-xs text-stone uppercase mb-1">Liabilities</p>
+                      <p className="text-xl font-mono text-blood-red">
+                        ${financeAccounts.filter(a => !a.is_asset).reduce((sum, a) => sum + a.balance, 0).toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="glass-recessed rounded-lg p-3 text-center">
+                      <p className="text-xs text-stone uppercase mb-1">Net Worth</p>
+                      <p className={`text-xl font-mono ${
+                        financeAccounts.filter(a => a.is_asset).reduce((sum, a) => sum + a.balance, 0) -
+                        financeAccounts.filter(a => !a.is_asset).reduce((sum, a) => sum + a.balance, 0) >= 0
+                          ? 'text-victory-green' : 'text-blood-red'
+                      }`}>
+                        ${(
+                          financeAccounts.filter(a => a.is_asset).reduce((sum, a) => sum + a.balance, 0) -
+                          financeAccounts.filter(a => !a.is_asset).reduce((sum, a) => sum + a.balance, 0)
+                        ).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Net Worth History Chart */}
+                  {netWorthSnapshots.length > 1 && (
+                    <div className="h-[200px] mb-4">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={netWorthSnapshots.slice().reverse().map(s => ({
+                          date: s.date,
+                          netWorth: s.net_worth,
+                          assets: s.total_assets,
+                          liabilities: s.total_liabilities,
+                        }))}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
+                          <XAxis
+                            dataKey="date"
+                            stroke="#6B7280"
+                            fontSize={10}
+                            tickFormatter={(value) => new Date(value + 'T00:00:00').toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}
+                          />
+                          <YAxis
+                            stroke="#6B7280"
+                            fontSize={10}
+                            tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: 'rgba(30, 30, 30, 0.95)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '8px',
+                            }}
+                            labelFormatter={(label) => new Date(label + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' })}
+                            formatter={(value, name) => [`$${(value as number)?.toLocaleString() ?? '0'}`, name === 'netWorth' ? 'Net Worth' : name === 'assets' ? 'Assets' : 'Liabilities']}
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey="assets"
+                            fill="rgba(34, 197, 94, 0.2)"
+                            stroke="rgba(34, 197, 94, 0.5)"
+                            strokeWidth={1}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="netWorth"
+                            stroke="#22C55E"
+                            strokeWidth={2}
+                            dot={{ fill: '#22C55E', r: 3 }}
+                          />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* Account Breakdown by Type */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs text-stone uppercase tracking-wider">Account Breakdown</h4>
+                    {/* Assets */}
+                    <div className="space-y-2">
+                      {financeAccounts.filter(a => a.is_asset).map(account => (
+                        <div key={account.id} className="flex items-center justify-between py-1.5 px-2 glass-recessed rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-victory-green" />
+                            <span className="text-sm text-fog">{account.name}</span>
+                            <span className="text-xs text-stone">{account.type}</span>
+                          </div>
+                          <span className="text-sm font-mono text-victory-green">
+                            +${account.balance.toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Liabilities */}
+                    {financeAccounts.filter(a => !a.is_asset).length > 0 && (
+                      <div className="space-y-2">
+                        {financeAccounts.filter(a => !a.is_asset).map(account => (
+                          <div key={account.id} className="flex items-center justify-between py-1.5 px-2 glass-recessed rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-blood-red" />
+                              <span className="text-sm text-fog">{account.name}</span>
+                              <span className="text-xs text-stone">{account.type}</span>
+                            </div>
+                            <span className="text-sm font-mono text-blood-red">
+                              -${Math.abs(account.balance).toLocaleString()}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Last snapshot info */}
+                  {netWorthSnapshots.length > 0 && (
+                    <p className="text-xs text-stone mt-3 text-center">
+                      Last snapshot: {formatShortDate(netWorthSnapshots[0].date)}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Dopamine Routine Section */}
+          {(activeChart === null || activeChart === 'routine') && (
+            <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-display text-sm text-bone flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-amber-400" />
+                  Dopamine Routine
+                </h3>
+                <span className="text-xs text-stone">Fight-or-Flight Protocol</span>
+              </div>
+
+              {/* Phase Filter Tabs */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                <button
+                  onClick={() => setActiveRoutinePhase('all')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    activeRoutinePhase === 'all'
+                      ? 'bg-ember/20 text-ember border border-ember/30'
+                      : 'glass-recessed text-fog hover:text-bone'
+                  }`}
+                >
+                  All Phases
+                </button>
+                {DOPAMINE_ROUTINE.map((phase) => {
+                  const IconComponent = phase.icon
+                  return (
+                    <button
+                      key={phase.id}
+                      onClick={() => setActiveRoutinePhase(phase.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                        activeRoutinePhase === phase.id
+                          ? `${phase.bgColor} ${phase.color} border border-current/30`
+                          : 'glass-recessed text-fog hover:text-bone'
+                      }`}
+                    >
+                      <IconComponent className="w-3 h-3" />
+                      {phase.title.split(' ')[0]}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Phase Cards */}
+              <div className="space-y-4">
+                {DOPAMINE_ROUTINE.filter(
+                  (phase) => activeRoutinePhase === 'all' || activeRoutinePhase === phase.id
+                ).map((phase) => {
+                  const IconComponent = phase.icon
+                  return (
+                    <motion.div
+                      key={phase.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`rounded-xl border ${phase.color.replace('text-', 'border-')}/20 overflow-hidden`}
+                    >
+                      {/* Phase Header */}
+                      <div className={`${phase.bgColor} px-4 py-3`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-lg bg-forge-black/30 flex items-center justify-center`}>
+                              <IconComponent className={`w-4 h-4 ${phase.color}`} />
+                            </div>
+                            <div>
+                              <h3 className={`font-semibold ${phase.color}`}>{phase.title}</h3>
+                              <p className="text-xs text-fog">{phase.subtitle} • {phase.time}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-fog">{phase.goal}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Phase Content */}
+                      <div className="p-4 bg-forge-black/30">
+                        {/* Environment Setup */}
+                        {phase.environment && (
+                          <div className="mb-3 flex flex-wrap gap-2">
+                            {phase.environment.map((env, i) => (
+                              <span key={i} className="text-xs px-2 py-1 rounded-full bg-iron-slate/50 text-fog">
+                                {env}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Trigger (for Rescue) */}
+                        {phase.trigger && (
+                          <div className="mb-3 p-2 rounded-lg bg-blood-red/10 border border-blood-red/20">
+                            <p className="text-xs text-blood-red">
+                              <span className="font-medium">Trigger:</span> {phase.trigger}
+                            </p>
+                            {phase.limit && (
+                              <p className="text-xs text-blood-red/70 mt-1">{phase.limit}</p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Supplement Items */}
+                        <div className="space-y-2">
+                          {phase.items.map((item) => (
+                            <button
+                              key={item.id}
+                              onClick={() => {
+                                setSelectedSupplement(item)
+                                setSelectedSupplementPhase(phase)
+                                setShowSupplementModal(true)
+                              }}
+                              className="w-full flex items-center justify-between p-3 rounded-lg glass-recessed hover:bg-white/5 transition-colors group"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className={`w-6 h-6 rounded-md ${phase.bgColor} flex items-center justify-center shrink-0`}>
+                                  <Pill className={`w-3 h-3 ${phase.color}`} />
+                                </div>
+                                <div className="text-left min-w-0">
+                                  <p className="text-sm text-bone truncate flex items-center gap-2">
+                                    {item.name}
+                                    {item.optional && (
+                                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-iron-slate/50 text-stone">
+                                        Optional
+                                      </span>
+                                    )}
+                                  </p>
+                                  <p className="text-xs text-fog truncate">{item.effect}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-xs font-mono text-stone">{item.dosage}</span>
+                                <Info className="w-4 h-4 text-stone group-hover:text-bone transition-colors" />
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Protocol Rule */}
+                        {phase.protocolRule && (
+                          <div className="mt-3 p-2 rounded-lg bg-ember/10 border border-ember/20 flex items-start gap-2">
+                            <AlertTriangle className="w-4 h-4 text-ember shrink-0 mt-0.5" />
+                            <p className="text-xs text-ember">{phase.protocolRule}</p>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )
+                })}
+              </div>
+
+              {/* Quick Reference */}
+              <div className="mt-4 pt-4 border-t border-iron-slate/50">
+                <p className="text-xs text-stone mb-2 flex items-center gap-2">
+                  <Beaker className="w-3 h-3" />
+                  Powder Measurements (No Scoops)
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                  <div className="glass-recessed px-2 py-1.5 rounded">
+                    <span className="text-fog">Creatine:</span> <span className="text-bone">1 tsp (~5g)</span>
+                  </div>
+                  <div className="glass-recessed px-2 py-1.5 rounded">
+                    <span className="text-fog">Glycine:</span> <span className="text-bone">1 heap tsp</span>
+                  </div>
+                  <div className="glass-recessed px-2 py-1.5 rounded">
+                    <span className="text-fog">Taurine:</span> <span className="text-bone">1/4 tsp (~1g)</span>
+                  </div>
+                  <div className="glass-recessed px-2 py-1.5 rounded">
+                    <span className="text-fog">Magnesium:</span> <span className="text-bone">1/2 tsp</span>
+                  </div>
+                  <div className="glass-recessed px-2 py-1.5 rounded col-span-2 sm:col-span-1">
+                    <span className="text-fog">Whey:</span> <span className="text-bone">3 heap tbsp</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Life Goals / True North Section */}
+          <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-display text-sm text-bone flex items-center gap-2">
+                <Star className="w-4 h-4 text-ember" />
+                True North
+              </h3>
+              <span className="text-xs text-stone">Set goals in Log mode</span>
+            </div>
+
+            {lifeGoals.length === 0 ? (
+              <div className="text-center py-8">
+                <Star className="w-8 h-8 text-stone/50 mx-auto mb-2" />
+                <p className="text-stone text-sm">No life goals yet.</p>
+                <p className="text-stone/70 text-xs mt-1">Set your True North in Log mode to guide your journey.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {lifeGoals.map(goal => {
+                  const linkedWaypoints = waypoints.filter(w => w.goal_id === goal.id)
+                  const getCategoryIcon = (category: string) => {
+                    switch (category) {
+                      case 'health': return <Heart className="w-4 h-4 text-ember" />
+                      case 'career': return <Briefcase className="w-4 h-4 text-fjord" />
+                      case 'relationships': return <Users className="w-4 h-4 text-victory-green" />
+                      case 'growth': return <Brain className="w-4 h-4 text-bone" />
+                      case 'financial': return <DollarSign className="w-4 h-4 text-ember" />
+                      default: return <Flag className="w-4 h-4 text-stone" />
+                    }
+                  }
+
+                  return (
+                    <div key={goal.id} className="glass-recessed rounded-xl p-4">
+                      {/* Goal Header */}
+                      <div className="flex items-center gap-2 mb-2">
+                        {getCategoryIcon(goal.category)}
+                        <h4 className="font-medium text-bone text-sm">{goal.title}</h4>
+                      </div>
+
+                      {/* Description */}
+                      {goal.description && (
+                        <p className="text-xs text-fog mb-3 line-clamp-2">{goal.description}</p>
+                      )}
+
+                      {/* Progress Bar */}
+                      <div className="mb-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-stone">Progress</span>
+                          <span className="text-xs text-ember font-mono">{goal.progress}%</span>
+                        </div>
+                        <div className="h-2 bg-iron-slate/50 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-ember to-ember/70 rounded-full transition-all duration-500"
+                            style={{ width: `${goal.progress}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Target Date */}
+                      {goal.target_date && (
+                        <div className="flex items-center gap-1 text-xs text-stone mb-3">
+                          <Calendar className="w-3 h-3" />
+                          <span>Target: {new Date(goal.target_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        </div>
+                      )}
+
+                      {/* Linked Waypoints */}
+                      {linkedWaypoints.length > 0 && (
+                        <div className="border-t border-white/5 pt-2 mt-2">
+                          <p className="text-xs text-stone uppercase tracking-wider mb-2 flex items-center gap-1">
+                            <Trophy className="w-3 h-3 text-victory-green" />
+                            Waypoints ({linkedWaypoints.length})
+                          </p>
+                          <div className="space-y-1">
+                            {linkedWaypoints.map(waypoint => (
+                              <div key={waypoint.id} className="flex items-center justify-between py-1 px-2 bg-victory-green/5 rounded-lg">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <CheckSquare className="w-3 h-3 text-victory-green flex-shrink-0" />
+                                  <span className="text-xs text-fog truncate">{waypoint.title}</span>
+                                </div>
+                                <span className="text-[10px] text-stone">
+                                  {new Date(waypoint.achieved_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Unlinked Waypoints */}
+            {waypoints.filter(w => !w.goal_id).length > 0 && (
+              <div className="mt-4 pt-4 border-t border-white/5">
+                <p className="text-xs text-stone uppercase tracking-wider mb-2 flex items-center gap-1">
+                  <Trophy className="w-3 h-3 text-victory-green" />
+                  General Waypoints
+                </p>
+                <div className="space-y-1">
+                  {waypoints.filter(w => !w.goal_id).map(waypoint => (
+                    <div key={waypoint.id} className="flex items-center justify-between py-2 px-3 glass-recessed rounded-lg">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <CheckSquare className="w-3.5 h-3.5 text-victory-green flex-shrink-0" />
+                        <span className="text-sm text-fog truncate">{waypoint.title}</span>
+                      </div>
+                      <span className="text-xs text-stone">
+                        {new Date(waypoint.achieved_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
             </motion.div>
           )}
           </AnimatePresence>
@@ -4346,7 +5964,7 @@ export default function KnarrDashboard() {
         isOpen={modalType === 'heading'}
         onClose={() => setModalType(null)}
         type="heading"
-        onSubmit={handleSetHeading}
+        onSubmit={handleSetHeadingLocal}
       />
       <WeightGoalModal
         isOpen={showWeightGoalModal}
@@ -4404,6 +6022,54 @@ export default function KnarrDashboard() {
         onClose={handleCloseMessagePopup}
         onMarkRead={handleMarkMessageRead}
         unreadCount={unreadMessages.length}
+      />
+      <FinanceSetupModal
+        isOpen={showFinanceSetupModal}
+        onClose={() => setShowFinanceSetupModal(false)}
+        onSubmit={setFinanceEncryptionKey}
+      />
+      <FinanceAccountModal
+        isOpen={showAddAccountModal}
+        onClose={() => {
+          setShowAddAccountModal(false)
+          setEditingAccount(null)
+        }}
+        existingAccount={editingAccount}
+        onSubmit={async (accountData) => {
+          if (editingAccount) {
+            await updateFinanceAccount(editingAccount.id, accountData)
+          } else {
+            await addFinanceAccount(accountData)
+          }
+        }}
+        onDelete={editingAccount ? async () => {
+          await deleteFinanceAccount(editingAccount.id)
+          setShowAddAccountModal(false)
+          setEditingAccount(null)
+        } : undefined}
+      />
+      <SupplementDetailModal
+        isOpen={showSupplementModal}
+        onClose={() => {
+          setShowSupplementModal(false)
+          setSelectedSupplement(null)
+          setSelectedSupplementPhase(null)
+        }}
+        supplement={selectedSupplement}
+        phaseColor={selectedSupplementPhase?.color ?? 'text-ember'}
+        phaseBgColor={selectedSupplementPhase?.bgColor ?? 'bg-ember/20'}
+      />
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        userName={userName}
+        calorieGoal={calorieGoal}
+        weightGoal={weightGoal}
+        onUpdateUserName={handleUpdateUserName}
+        onUpdateCalorieGoal={handleUpdateCalorieGoalFromSettings}
+        onUpdateWeightGoal={handleUpdateWeightGoalFromSettings}
+        onClearAllData={handleClearAllData}
+        onResetOnboarding={handleResetOnboarding}
       />
     </div>
   )

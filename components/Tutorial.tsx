@@ -62,9 +62,11 @@ export function Tutorial({ steps, onComplete, onSkip }: TutorialProps) {
     })
 
     // Calculate tooltip position based on step.position
-    const tooltipWidth = 320
+    // Use responsive width: smaller on mobile screens
+    const isMobile = window.innerWidth < 400
+    const tooltipWidth = isMobile ? Math.min(window.innerWidth - 32, 280) : 320
     const tooltipHeight = 180
-    const margin = 16
+    const margin = isMobile ? 12 : 16
 
     let top = 0
     let left = 0
@@ -203,16 +205,16 @@ export function Tutorial({ steps, onComplete, onSkip }: TutorialProps) {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2 }}
-          className={`absolute z-[101] w-80 ${isCenterStep ? '-translate-x-1/2 -translate-y-1/2' : ''}`}
+          className={`absolute z-[101] w-[calc(100vw-2rem)] max-w-[320px] ${isCenterStep ? '-translate-x-1/2 -translate-y-1/2' : ''}`}
           style={{
             top: tooltipPosition.top,
             left: tooltipPosition.left,
             pointerEvents: 'auto'
           }}
         >
-          <div className="glass-modal p-5 rounded-xl shadow-2xl">
+          <div className="glass-modal p-4 sm:p-5 rounded-xl shadow-2xl">
             {/* Header with step counter and skip */}
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
               <div className="flex items-center gap-2">
                 <Compass className="w-4 h-4 text-ember" />
                 <span className="text-xs text-stone">
@@ -229,7 +231,7 @@ export function Tutorial({ steps, onComplete, onSkip }: TutorialProps) {
             </div>
 
             {/* Progress dots */}
-            <div className="flex gap-1 mb-4">
+            <div className="flex gap-1 mb-3 sm:mb-4">
               {steps.map((_, i) => (
                 <div
                   key={i}
@@ -241,8 +243,8 @@ export function Tutorial({ steps, onComplete, onSkip }: TutorialProps) {
             </div>
 
             {/* Content */}
-            <h3 className="font-display text-lg text-bone mb-2">{step?.title}</h3>
-            <p className="text-fog text-sm leading-relaxed mb-5">{step?.description}</p>
+            <h3 className="font-display text-base sm:text-lg text-bone mb-1.5 sm:mb-2">{step?.title}</h3>
+            <p className="text-fog text-sm leading-relaxed mb-4 sm:mb-5">{step?.description}</p>
 
             {/* Navigation */}
             <div className="flex items-center justify-between">
@@ -257,7 +259,7 @@ export function Tutorial({ steps, onComplete, onSkip }: TutorialProps) {
 
               <button
                 onClick={handleNext}
-                className="btn-primary flex items-center gap-2 text-sm px-4 py-2"
+                className="btn-primary flex items-center gap-2 text-sm px-3 sm:px-4 py-2"
               >
                 {isLastStep ? 'Get Started' : 'Next'}
                 {!isLastStep && <ArrowRight className="w-4 h-4" />}

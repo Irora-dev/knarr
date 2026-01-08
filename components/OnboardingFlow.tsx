@@ -129,11 +129,11 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             className="space-y-6"
           >
             <div className="text-center">
-              <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-ember/20 flex items-center justify-center">
-                <Compass className="w-10 h-10 text-ember" />
+              <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 rounded-full bg-ember/20 flex items-center justify-center">
+                <Compass className="w-8 h-8 sm:w-10 sm:h-10 text-ember" />
               </div>
-              <h2 className="font-display text-2xl text-bone mb-2">Welcome to Knarr</h2>
-              <p className="text-fog">Your personal command centre for life. Let's set you up.</p>
+              <h2 className="font-display text-xl sm:text-2xl text-bone mb-2">Welcome to Knarr</h2>
+              <p className="text-fog text-sm sm:text-base">Your personal command centre for life. Let's set you up.</p>
             </div>
 
             <div>
@@ -165,8 +165,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             className="space-y-6"
           >
             <div className="text-center">
-              <h2 className="font-display text-2xl text-bone mb-2">Choose Your Focus</h2>
-              <p className="text-fog">What areas of life do you want to track?</p>
+              <h2 className="font-display text-xl sm:text-2xl text-bone mb-2">Choose Your Focus</h2>
+              <p className="text-fog text-sm sm:text-base">What areas of life do you want to track?</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -205,11 +205,11 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             className="space-y-6"
           >
             <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-fjord-blue/20 flex items-center justify-center">
-                <Scale className="w-8 h-8 text-fjord-blue" />
+              <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 rounded-full bg-fjord-blue/20 flex items-center justify-center">
+                <Scale className="w-7 h-7 sm:w-8 sm:h-8 text-fjord-blue" />
               </div>
-              <h2 className="font-display text-2xl text-bone mb-2">Weight Tracking</h2>
-              <p className="text-fog">Optional: Set up weight tracking goals</p>
+              <h2 className="font-display text-xl sm:text-2xl text-bone mb-2">Weight Tracking</h2>
+              <p className="text-fog text-sm sm:text-base">Optional: Set up weight tracking goals</p>
             </div>
 
             <div className="space-y-4">
@@ -256,11 +256,11 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             className="space-y-6"
           >
             <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-ember/20 flex items-center justify-center">
-                <Flame className="w-8 h-8 text-ember" />
+              <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 rounded-full bg-ember/20 flex items-center justify-center">
+                <Flame className="w-7 h-7 sm:w-8 sm:h-8 text-ember" />
               </div>
-              <h2 className="font-display text-2xl text-bone mb-2">Calorie Target</h2>
-              <p className="text-fog">Optional: Set your daily calorie goal</p>
+              <h2 className="font-display text-xl sm:text-2xl text-bone mb-2">Calorie Target</h2>
+              <p className="text-fog text-sm sm:text-base">Optional: Set your daily calorie goal</p>
             </div>
 
             <div>
@@ -293,11 +293,11 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             className="space-y-6"
           >
             <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-victory-green/20 flex items-center justify-center">
-                <CheckSquare className="w-8 h-8 text-victory-green" />
+              <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 rounded-full bg-victory-green/20 flex items-center justify-center">
+                <CheckSquare className="w-7 h-7 sm:w-8 sm:h-8 text-victory-green" />
               </div>
-              <h2 className="font-display text-2xl text-bone mb-2">Daily Habits</h2>
-              <p className="text-fog">Choose habits to track daily</p>
+              <h2 className="font-display text-xl sm:text-2xl text-bone mb-2">Daily Habits</h2>
+              <p className="text-fog text-sm sm:text-base">Choose habits to track daily</p>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -366,10 +366,10 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 glass-modal p-8 max-w-lg w-full"
+        className="relative z-10 glass-modal p-4 sm:p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto"
       >
         {/* Progress bar */}
-        <div className="flex gap-1 mb-8">
+        <div className="flex gap-1 mb-4 sm:mb-8">
           {Array.from({ length: totalSteps }).map((_, i) => (
             <div
               key={i}
@@ -386,7 +386,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         </AnimatePresence>
 
         {/* Navigation */}
-        <div className="flex justify-between mt-8 pt-6 border-t border-white/10">
+        <div className="flex justify-between mt-4 sm:mt-8 pt-4 sm:pt-6 border-t border-white/10">
           <button
             onClick={handleBack}
             disabled={step === 0}

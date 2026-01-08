@@ -272,6 +272,25 @@ export const waypointOps = createEntityOperations<{
   created_at: string
 }>('waypoint')
 
+// Finance operations (data is encrypted client-side)
+export const financeAccountOps = createEntityOperations<{
+  encrypted_data: string // Encrypted: name, type, balance, currency, etc.
+  updated_at: string
+  created_at: string
+}>('finance_account')
+
+export const financeTransactionOps = createEntityOperations<{
+  encrypted_data: string // Encrypted: amount, description, category, etc.
+  date: string // Unencrypted for sorting/filtering
+  created_at: string
+}>('finance_transaction')
+
+export const netWorthSnapshotOps = createEntityOperations<{
+  encrypted_data: string // Encrypted: totals and breakdown
+  date: string // Unencrypted for sorting
+  created_at: string
+}>('net_worth_snapshot')
+
 // Settings stored separately (not user-specific in same way)
 export const settingsOps = {
   async get<T>(key: string, defaultValue: T): Promise<T> {
