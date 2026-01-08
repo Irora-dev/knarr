@@ -181,13 +181,14 @@ function setToStorage<T>(key: string, value: T): void {
 }
 
 export function useKnarrData() {
-  const { user } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
   const [dataLoaded, setDataLoaded] = useState(false)
 
   // Use authenticated user ID or fallback for local mode
   const userId = user?.id || 'local-user'
-  const useSupabase = isSupabaseConfigured() && !!user
+  // Only use Supabase if configured AND we have a user (auth finished loading)
+  const useSupabase = isSupabaseConfigured() && !!user && !authLoading
 
   // Data state
   const [calories, setCalories] = useState<CalorieLog[]>([])
@@ -362,11 +363,15 @@ export function useKnarrData() {
     } finally {
       setIsLoading(false)
     }
-  }, [userId, useSupabase])
+  }, [userId, useSupabase, authLoading])
 
   useEffect(() => {
+    // Don't load data until auth has finished loading (if Supabase is configured)
+    if (isSupabaseConfigured() && authLoading) {
+      return
+    }
     loadData()
-  }, [loadData])
+  }, [loadData, authLoading])
 
   // CRUD operations for calories
   const addCalorie = useCallback(async (date: string, calorieCount: number) => {
