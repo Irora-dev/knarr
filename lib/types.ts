@@ -39,6 +39,8 @@ export interface HabitLog {
   created_at: string
 }
 
+export type TaskRecurrence = 'none' | 'daily' | 'weekly' | 'monthly'
+
 export interface Task {
   id: string
   user_id: string
@@ -46,6 +48,7 @@ export interface Task {
   scheduled_date: string | null  // YYYY-MM-DD or null for "today"
   completed: boolean
   completed_at: string | null    // timestamp for animation timing
+  recurrence: TaskRecurrence     // recurring pattern
   created_at: string
 }
 

@@ -60,12 +60,15 @@ interface HabitLog {
   created_at: string
 }
 
+type TaskRecurrence = 'none' | 'daily' | 'weekly' | 'monthly'
+
 interface Task {
   id: string
   name: string
   scheduled_date: string | null
   completed: boolean
   completed_at: string | null
+  recurrence: TaskRecurrence
   created_at: string
 }
 
@@ -461,12 +464,13 @@ export function useKnarrData() {
   }, [habitLogs, userId])
 
   // CRUD operations for tasks
-  const addTask = useCallback(async (name: string, scheduledDate?: string) => {
+  const addTask = useCallback(async (name: string, scheduledDate?: string, recurrence: TaskRecurrence = 'none') => {
     const created = await taskOps.create(userId, {
       name,
       scheduled_date: scheduledDate || null,
       completed: false,
       completed_at: null,
+      recurrence,
       created_at: new Date().toISOString()
     })
     setTasks(prev => [created as Task, ...prev])
@@ -474,13 +478,49 @@ export function useKnarrData() {
   }, [userId])
 
   const completeTask = useCallback(async (id: string) => {
+    const task = tasks.find(t => t.id === id)
     const updated = await taskOps.update(id, {
       completed: true,
       completed_at: new Date().toISOString()
     })
     setTasks(prev => prev.map(t => t.id === id ? updated as Task : t))
+
+    // If task is recurring, create the next instance
+    if (task && task.recurrence !== 'none') {
+      const baseDate = task.scheduled_date ? new Date(task.scheduled_date) : new Date()
+      let nextDate: Date
+
+      switch (task.recurrence) {
+        case 'daily':
+          nextDate = new Date(baseDate)
+          nextDate.setDate(nextDate.getDate() + 1)
+          break
+        case 'weekly':
+          nextDate = new Date(baseDate)
+          nextDate.setDate(nextDate.getDate() + 7)
+          break
+        case 'monthly':
+          nextDate = new Date(baseDate)
+          nextDate.setMonth(nextDate.getMonth() + 1)
+          break
+        default:
+          nextDate = new Date(baseDate)
+      }
+
+      const nextScheduledDate = nextDate.toISOString().split('T')[0]
+      const nextTask = await taskOps.create(userId, {
+        name: task.name,
+        scheduled_date: nextScheduledDate,
+        completed: false,
+        completed_at: null,
+        recurrence: task.recurrence,
+        created_at: new Date().toISOString()
+      })
+      setTasks(prev => [nextTask as Task, ...prev])
+    }
+
     return updated
-  }, [])
+  }, [tasks, userId])
 
   const deleteTask = useCallback(async (id: string) => {
     await taskOps.delete(id)

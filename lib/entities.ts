@@ -225,6 +225,7 @@ export const taskOps = createEntityOperations<{
   scheduled_date: string | null
   completed: boolean
   completed_at: string | null
+  recurrence: 'none' | 'daily' | 'weekly' | 'monthly'
   created_at: string
 }>('task')
 

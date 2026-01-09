@@ -50,7 +50,8 @@ import {
   Sparkles,
   ChevronDown,
   LayoutDashboard,
-  Wallet
+  Wallet,
+  Repeat
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { isSupabaseConfigured } from '../lib/supabase'
@@ -3746,6 +3747,7 @@ export default function KnarrDashboard() {
   const [completingTaskIds, setCompletingTaskIds] = useState<Set<string>>(new Set())
   const [showTaskDatePicker, setShowTaskDatePicker] = useState(false)
   const [selectedTaskDate, setSelectedTaskDate] = useState<string | null>(null)
+  const [selectedTaskRecurrence, setSelectedTaskRecurrence] = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none')
 
   // View mode tabs
   const VIEW_TABS = [
@@ -4136,8 +4138,8 @@ export default function KnarrDashboard() {
   }
 
   // Task handlers
-  const handleAddTask = (name: string, scheduledDate?: string) => {
-    addTask(name, scheduledDate)
+  const handleAddTask = (name: string, scheduledDate?: string, recurrence: 'none' | 'daily' | 'weekly' | 'monthly' = 'none') => {
+    addTask(name, scheduledDate, recurrence)
   }
 
   const handleCompleteTask = (id: string) => {
@@ -4704,6 +4706,11 @@ export default function KnarrDashboard() {
                               <span className={`text-sm flex-1 ${isCompleting ? 'text-stone line-through' : 'text-bone'}`}>
                                 {task.name}
                               </span>
+                              {task.recurrence && task.recurrence !== 'none' && (
+                                <span className="text-xs text-fjord bg-fjord/10 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                  <Repeat className="w-3 h-3" />
+                                </span>
+                              )}
                             </button>
                             {!isCompleting && (
                               <button
@@ -4732,9 +4739,10 @@ export default function KnarrDashboard() {
                       onChange={(e) => setNewTaskName(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && newTaskName.trim()) {
-                          handleAddTask(newTaskName.trim(), selectedTaskDate || undefined)
+                          handleAddTask(newTaskName.trim(), selectedTaskDate || undefined, selectedTaskRecurrence)
                           setNewTaskName('')
                           setSelectedTaskDate(null)
+                          setSelectedTaskRecurrence('none')
                           setShowTaskDatePicker(false)
                         }
                       }}
@@ -4751,12 +4759,28 @@ export default function KnarrDashboard() {
                     >
                       <Calendar className="w-4 h-4" />
                     </button>
+                    <button
+                      onClick={() => {
+                        const options: ('none' | 'daily' | 'weekly' | 'monthly')[] = ['none', 'daily', 'weekly', 'monthly']
+                        const currentIndex = options.indexOf(selectedTaskRecurrence)
+                        setSelectedTaskRecurrence(options[(currentIndex + 1) % options.length]!)
+                      }}
+                      className={`p-2 rounded-lg transition-colors ${
+                        selectedTaskRecurrence !== 'none'
+                          ? 'bg-fjord/20 text-fjord'
+                          : 'bg-iron-slate/30 text-stone hover:text-bone hover:bg-iron-slate/50'
+                      }`}
+                      title={`Repeat: ${selectedTaskRecurrence}`}
+                    >
+                      <Repeat className="w-4 h-4" />
+                    </button>
                     {newTaskName.trim() && (
                       <button
                         onClick={() => {
-                          handleAddTask(newTaskName.trim(), selectedTaskDate || undefined)
+                          handleAddTask(newTaskName.trim(), selectedTaskDate || undefined, selectedTaskRecurrence)
                           setNewTaskName('')
                           setSelectedTaskDate(null)
+                          setSelectedTaskRecurrence('none')
                           setShowTaskDatePicker(false)
                         }}
                         className="p-2 rounded-lg bg-ember/20 text-ember hover:bg-ember/30 transition-colors"
@@ -4766,23 +4790,37 @@ export default function KnarrDashboard() {
                     )}
                   </div>
 
-                  {/* Selected date badge */}
-                  {selectedTaskDate && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs text-ember bg-ember/10 px-2 py-1 rounded-full flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        {selectedTaskDate === today
-                          ? 'Today'
-                          : selectedTaskDate === getDateOffset(1)
-                          ? 'Tomorrow'
-                          : formatShortDate(selectedTaskDate)}
-                        <button
-                          onClick={() => setSelectedTaskDate(null)}
-                          className="ml-1 hover:text-bone"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
+                  {/* Selected date and recurrence badges */}
+                  {(selectedTaskDate || selectedTaskRecurrence !== 'none') && (
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      {selectedTaskDate && (
+                        <span className="text-xs text-ember bg-ember/10 px-2 py-1 rounded-full flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {selectedTaskDate === today
+                            ? 'Today'
+                            : selectedTaskDate === getDateOffset(1)
+                            ? 'Tomorrow'
+                            : formatShortDate(selectedTaskDate)}
+                          <button
+                            onClick={() => setSelectedTaskDate(null)}
+                            className="ml-1 hover:text-bone"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      )}
+                      {selectedTaskRecurrence !== 'none' && (
+                        <span className="text-xs text-fjord bg-fjord/10 px-2 py-1 rounded-full flex items-center gap-1">
+                          <Repeat className="w-3 h-3" />
+                          {selectedTaskRecurrence.charAt(0).toUpperCase() + selectedTaskRecurrence.slice(1)}
+                          <button
+                            onClick={() => setSelectedTaskRecurrence('none')}
+                            className="ml-1 hover:text-bone"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      )}
                     </div>
                   )}
 
@@ -5261,7 +5299,12 @@ export default function KnarrDashboard() {
                 <div className="space-y-1">
                   {upcomingTasks.slice(0, 5).map(task => (
                     <div key={task.id} className="flex items-center justify-between py-2 px-3 glass-recessed rounded-lg">
-                      <span className="text-sm text-fog">{task.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-fog">{task.name}</span>
+                        {task.recurrence && task.recurrence !== 'none' && (
+                          <Repeat className="w-3 h-3 text-fjord" />
+                        )}
+                      </div>
                       <span className="text-xs text-ember">
                         {task.scheduled_date === getDateOffset(1)
                           ? 'Tomorrow'
