@@ -51,7 +51,10 @@ import {
   ChevronDown,
   LayoutDashboard,
   Wallet,
-  Repeat
+  Repeat,
+  Tag,
+  ShoppingCart,
+  GraduationCap
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { isSupabaseConfigured } from '../lib/supabase'
@@ -70,7 +73,9 @@ import {
   ResponsiveContainer,
   ReferenceLine,
   Area,
-  ComposedChart
+  ComposedChart,
+  Bar,
+  BarChart
 } from 'recharts'
 
 // Types
@@ -107,6 +112,9 @@ interface Task {
   scheduled_date: string | null  // YYYY-MM-DD or null for "today"
   completed: boolean
   completed_at: string | null    // timestamp for animation timing
+  recurrence: 'none' | 'daily' | 'weekly' | 'monthly'
+  priority: 'low' | 'medium' | 'high' | null
+  category: 'work' | 'personal' | 'health' | 'finance' | 'errands' | 'learning' | null
   created_at: string
 }
 
@@ -1495,6 +1503,147 @@ function HabitChart({
                 activeDot={{ r: 5, fill: '#4ADE80', stroke: '#1C1C1E', strokeWidth: 2 }}
               />
             </ComposedChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-[180px] flex items-center justify-center">
+            <div className="text-stone text-sm">Loading chart...</div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Task Chart Component
+function TaskChart({
+  tasks,
+  className
+}: {
+  tasks: Task[]
+  className?: string
+}) {
+  const [chartMounted, setChartMounted] = useState(false)
+
+  useEffect(() => {
+    setChartMounted(true)
+  }, [])
+
+  // Get completed tasks with their completion dates
+  const completedTasks = tasks.filter(t => t.completed && t.completed_at)
+
+  if (completedTasks.length < 2) {
+    return (
+      <div className={`weight-chart-empty h-full flex items-center justify-center ${className ?? ''}`}>
+        <div className="flex flex-col items-center justify-center text-center p-6">
+          <Target className="w-8 h-8 text-stone mb-3 opacity-50" />
+          <p className="text-fog text-sm">Complete at least 2 tasks</p>
+          <p className="text-stone text-xs mt-1">to see productivity trends</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Group tasks by completion date
+  const tasksByDate: Record<string, number> = {}
+  completedTasks.forEach(task => {
+    const date = task.completed_at!.split('T')[0]
+    tasksByDate[date!] = (tasksByDate[date!] || 0) + 1
+  })
+
+  // Get last 14 days
+  const today = new Date()
+  const chartData = []
+  for (let i = 13; i >= 0; i--) {
+    const date = new Date(today)
+    date.setDate(date.getDate() - i)
+    const dateStr = date.toISOString().split('T')[0]
+    chartData.push({
+      date: date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+      count: tasksByDate[dateStr!] || 0,
+      fullDate: dateStr
+    })
+  }
+
+  // Calculate category breakdown for completed tasks
+  const categoryBreakdown: Record<string, number> = {}
+  completedTasks.forEach(task => {
+    const cat = task.category || 'uncategorized'
+    categoryBreakdown[cat] = (categoryBreakdown[cat] || 0) + 1
+  })
+
+  const categoryColors: Record<string, string> = {
+    work: '#F59E0B',
+    personal: '#EC4899',
+    health: '#10B981',
+    finance: '#8B5CF6',
+    errands: '#3B82F6',
+    learning: '#06B6D4',
+    uncategorized: '#6B7280'
+  }
+
+  return (
+    <div className={`weight-chart h-full flex flex-col ${className ?? ''}`}>
+      <div className="flex items-center justify-between mb-4 flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <Target className="w-4 h-4 text-ember" />
+          <span className="text-caption text-fog">TASK COMPLETIONS</span>
+        </div>
+        <div className="flex items-center gap-3 text-xs">
+          {Object.entries(categoryBreakdown).slice(0, 3).map(([cat, count]) => (
+            <span key={cat} className="flex items-center gap-1">
+              <span
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: categoryColors[cat] || '#6B7280' }}
+              />
+              <span className="text-stone capitalize">{cat === 'uncategorized' ? 'Other' : cat}: {count}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="chart-container flex-1 min-h-0">
+        {chartMounted ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+
+              <XAxis
+                dataKey="date"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#6B7280', fontSize: 10 }}
+                interval="preserveStartEnd"
+              />
+
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#6B7280', fontSize: 10 }}
+                allowDecimals={false}
+              />
+
+              <Tooltip
+                content={({ active, payload, label }) => {
+                  if (!active || !payload || !payload.length) return null
+                  const data = payload[0]?.payload as { count: number } | undefined
+                  return (
+                    <div className="chart-tooltip">
+                      <p className="text-caption text-fog mb-1">{label}</p>
+                      <p className="font-mono text-sm text-ember">
+                        {data?.count} {data?.count === 1 ? 'task' : 'tasks'} completed
+                      </p>
+                    </div>
+                  )
+                }}
+              />
+
+              <Bar
+                dataKey="count"
+                fill="#F97316"
+                radius={[4, 4, 0, 0]}
+                maxBarSize={40}
+              />
+            </BarChart>
           </ResponsiveContainer>
         ) : (
           <div className="h-[180px] flex items-center justify-center">
@@ -3749,6 +3898,7 @@ export default function KnarrDashboard() {
   const [selectedTaskDate, setSelectedTaskDate] = useState<string | null>(null)
   const [selectedTaskRecurrence, setSelectedTaskRecurrence] = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none')
   const [selectedTaskPriority, setSelectedTaskPriority] = useState<'low' | 'medium' | 'high' | null>(null)
+  const [selectedTaskCategory, setSelectedTaskCategory] = useState<'work' | 'personal' | 'health' | 'finance' | 'errands' | 'learning' | null>(null)
 
   // View mode tabs
   const VIEW_TABS = [
@@ -4144,8 +4294,8 @@ export default function KnarrDashboard() {
   }
 
   // Task handlers
-  const handleAddTask = (name: string, scheduledDate?: string, recurrence: 'none' | 'daily' | 'weekly' | 'monthly' = 'none', priority: 'low' | 'medium' | 'high' | null = null) => {
-    addTask(name, scheduledDate, recurrence, priority)
+  const handleAddTask = (name: string, scheduledDate?: string, recurrence: 'none' | 'daily' | 'weekly' | 'monthly' = 'none', priority: 'low' | 'medium' | 'high' | null = null, category: 'work' | 'personal' | 'health' | 'finance' | 'errands' | 'learning' | null = null) => {
+    addTask(name, scheduledDate, recurrence, priority, category)
   }
 
   const handleCompleteTask = (id: string) => {
@@ -4726,6 +4876,16 @@ export default function KnarrDashboard() {
                                   <Repeat className="w-3 h-3" />
                                 </span>
                               )}
+                              {task.category && (
+                                <span className="text-xs text-stone bg-iron-slate/30 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                  {task.category === 'work' && <Briefcase className="w-3 h-3" />}
+                                  {task.category === 'personal' && <Heart className="w-3 h-3" />}
+                                  {task.category === 'health' && <Pill className="w-3 h-3" />}
+                                  {task.category === 'finance' && <DollarSign className="w-3 h-3" />}
+                                  {task.category === 'errands' && <ShoppingCart className="w-3 h-3" />}
+                                  {task.category === 'learning' && <GraduationCap className="w-3 h-3" />}
+                                </span>
+                              )}
                             </button>
                             {!isCompleting && (
                               <button
@@ -4754,11 +4914,12 @@ export default function KnarrDashboard() {
                       onChange={(e) => setNewTaskName(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && newTaskName.trim()) {
-                          handleAddTask(newTaskName.trim(), selectedTaskDate || undefined, selectedTaskRecurrence, selectedTaskPriority)
+                          handleAddTask(newTaskName.trim(), selectedTaskDate || undefined, selectedTaskRecurrence, selectedTaskPriority, selectedTaskCategory)
                           setNewTaskName('')
                           setSelectedTaskDate(null)
                           setSelectedTaskRecurrence('none')
                           setSelectedTaskPriority(null)
+                          setSelectedTaskCategory(null)
                           setShowTaskDatePicker(false)
                         }
                       }}
@@ -4809,14 +4970,30 @@ export default function KnarrDashboard() {
                     >
                       <Flag className="w-4 h-4" />
                     </button>
+                    <button
+                      onClick={() => {
+                        const options: (typeof selectedTaskCategory)[] = [null, 'work', 'personal', 'health', 'finance', 'errands', 'learning']
+                        const currentIndex = options.indexOf(selectedTaskCategory)
+                        setSelectedTaskCategory(options[(currentIndex + 1) % options.length]!)
+                      }}
+                      className={`p-2 rounded-lg transition-colors ${
+                        selectedTaskCategory
+                          ? 'bg-fjord/20 text-fjord'
+                          : 'bg-iron-slate/30 text-stone hover:text-bone hover:bg-iron-slate/50'
+                      }`}
+                      title={`Category: ${selectedTaskCategory || 'none'}`}
+                    >
+                      <Tag className="w-4 h-4" />
+                    </button>
                     {newTaskName.trim() && (
                       <button
                         onClick={() => {
-                          handleAddTask(newTaskName.trim(), selectedTaskDate || undefined, selectedTaskRecurrence, selectedTaskPriority)
+                          handleAddTask(newTaskName.trim(), selectedTaskDate || undefined, selectedTaskRecurrence, selectedTaskPriority, selectedTaskCategory)
                           setNewTaskName('')
                           setSelectedTaskDate(null)
                           setSelectedTaskRecurrence('none')
                           setSelectedTaskPriority(null)
+                          setSelectedTaskCategory(null)
                           setShowTaskDatePicker(false)
                         }}
                         className="p-2 rounded-lg bg-ember/20 text-ember hover:bg-ember/30 transition-colors"
@@ -4826,8 +5003,8 @@ export default function KnarrDashboard() {
                     )}
                   </div>
 
-                  {/* Selected date, recurrence, and priority badges */}
-                  {(selectedTaskDate || selectedTaskRecurrence !== 'none' || selectedTaskPriority) && (
+                  {/* Selected date, recurrence, priority, and category badges */}
+                  {(selectedTaskDate || selectedTaskRecurrence !== 'none' || selectedTaskPriority || selectedTaskCategory) && (
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       {selectedTaskDate && (
                         <span className="text-xs text-ember bg-ember/10 px-2 py-1 rounded-full flex items-center gap-1">
@@ -4869,6 +5046,23 @@ export default function KnarrDashboard() {
                           {selectedTaskPriority.charAt(0).toUpperCase() + selectedTaskPriority.slice(1)}
                           <button
                             onClick={() => setSelectedTaskPriority(null)}
+                            className="ml-1 hover:text-bone"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      )}
+                      {selectedTaskCategory && (
+                        <span className="text-xs text-fjord bg-fjord/10 px-2 py-1 rounded-full flex items-center gap-1">
+                          {selectedTaskCategory === 'work' && <Briefcase className="w-3 h-3" />}
+                          {selectedTaskCategory === 'personal' && <Heart className="w-3 h-3" />}
+                          {selectedTaskCategory === 'health' && <Pill className="w-3 h-3" />}
+                          {selectedTaskCategory === 'finance' && <DollarSign className="w-3 h-3" />}
+                          {selectedTaskCategory === 'errands' && <ShoppingCart className="w-3 h-3" />}
+                          {selectedTaskCategory === 'learning' && <GraduationCap className="w-3 h-3" />}
+                          {selectedTaskCategory.charAt(0).toUpperCase() + selectedTaskCategory.slice(1)}
+                          <button
+                            onClick={() => setSelectedTaskCategory(null)}
                             className="ml-1 hover:text-bone"
                           >
                             <X className="w-3 h-3" />
@@ -5312,6 +5506,13 @@ export default function KnarrDashboard() {
             </div>
           )}
 
+          {/* Task Chart - Full Width */}
+          {(activeViewTab === 'overview' || activeViewTab === 'todos') && (
+            <div className="glass p-3 sm:p-4 mb-3 sm:mb-4 h-[240px] sm:h-[280px]">
+              <TaskChart tasks={tasks} />
+            </div>
+          )}
+
           {/* Task Manager Section */}
           {(activeViewTab === 'overview' || activeViewTab === 'todos') && (
             <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
@@ -5357,6 +5558,16 @@ export default function KnarrDashboard() {
                         <span className="text-sm text-fog">{task.name}</span>
                         {task.recurrence && task.recurrence !== 'none' && (
                           <Repeat className="w-3 h-3 text-fjord" />
+                        )}
+                        {task.category && (
+                          <span className="text-xs text-stone">
+                            {task.category === 'work' && <Briefcase className="w-3 h-3" />}
+                            {task.category === 'personal' && <Heart className="w-3 h-3" />}
+                            {task.category === 'health' && <Pill className="w-3 h-3" />}
+                            {task.category === 'finance' && <DollarSign className="w-3 h-3" />}
+                            {task.category === 'errands' && <ShoppingCart className="w-3 h-3" />}
+                            {task.category === 'learning' && <GraduationCap className="w-3 h-3" />}
+                          </span>
                         )}
                       </div>
                       <span className="text-xs text-ember">

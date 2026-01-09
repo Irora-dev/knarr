@@ -62,6 +62,7 @@ interface HabitLog {
 
 type TaskRecurrence = 'none' | 'daily' | 'weekly' | 'monthly'
 type TaskPriority = 'low' | 'medium' | 'high' | null
+type TaskCategory = 'work' | 'personal' | 'health' | 'finance' | 'errands' | 'learning' | null
 
 interface Task {
   id: string
@@ -71,6 +72,7 @@ interface Task {
   completed_at: string | null
   recurrence: TaskRecurrence
   priority: TaskPriority
+  category: TaskCategory
   created_at: string
 }
 
@@ -466,7 +468,7 @@ export function useKnarrData() {
   }, [habitLogs, userId])
 
   // CRUD operations for tasks
-  const addTask = useCallback(async (name: string, scheduledDate?: string, recurrence: TaskRecurrence = 'none', priority: TaskPriority = null) => {
+  const addTask = useCallback(async (name: string, scheduledDate?: string, recurrence: TaskRecurrence = 'none', priority: TaskPriority = null, category: TaskCategory = null) => {
     const created = await taskOps.create(userId, {
       name,
       scheduled_date: scheduledDate || null,
@@ -474,6 +476,7 @@ export function useKnarrData() {
       completed_at: null,
       recurrence,
       priority,
+      category,
       created_at: new Date().toISOString()
     })
     setTasks(prev => [created as Task, ...prev])
@@ -518,6 +521,7 @@ export function useKnarrData() {
         completed_at: null,
         recurrence: task.recurrence,
         priority: task.priority,
+        category: task.category,
         created_at: new Date().toISOString()
       })
       setTasks(prev => [nextTask as Task, ...prev])
