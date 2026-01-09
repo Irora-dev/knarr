@@ -17,7 +17,10 @@ import {
   financeAccountOps,
   financeTransactionOps,
   netWorthSnapshotOps,
-  settingsOps
+  settingsOps,
+  userSettingsOps,
+  UserSettings,
+  DEFAULT_USER_SETTINGS
 } from './entities'
 import {
   encryptObject,
@@ -158,14 +161,9 @@ interface NetWorthSnapshot {
   created_at: string
 }
 
-// Local storage keys for settings (these stay local)
+// Local storage keys for sensitive settings (encryption key stays local for security)
 const SETTINGS_KEYS = {
-  userName: 'knarr_userName',
-  weightGoal: 'knarr_weightGoal',
-  calorieGoal: 'knarr_calorieGoal',
-  onboardingComplete: 'knarr_onboardingComplete',
-  tutorialComplete: 'knarr_tutorialComplete',
-  financeEncryptionKey: 'knarr_finance_key', // User's encryption key for finance data
+  financeEncryptionKey: 'knarr_finance_key', // User's encryption key for finance data - never synced to server
 }
 
 // Helper for localStorage
@@ -208,10 +206,12 @@ export function useKnarrData() {
   const [netWorthSnapshots, setNetWorthSnapshots] = useState<NetWorthSnapshot[]>([])
   const [financeEncryptionKey, setFinanceEncryptionKeyState] = useState<string | null>(null)
 
-  // Settings (always local storage)
+  // Settings (synced to Supabase when authenticated)
   const [userName, setUserNameState] = useState('Voyager')
   const [weightGoal, setWeightGoalState] = useState<number | null>(null)
   const [calorieGoal, setCalorieGoalState] = useState<number | null>(null)
+  const [onboardingComplete, setOnboardingCompleteState] = useState(false)
+  const [tutorialComplete, setTutorialCompleteState] = useState(false)
 
   // Load all data
   const loadData = useCallback(async () => {
@@ -291,12 +291,13 @@ export function useKnarrData() {
         setWaypoints(waypointsData as Waypoint[])
       }
 
-      // Load settings from localStorage
-      setUserNameState(getFromStorage(SETTINGS_KEYS.userName, 'Voyager'))
-      const savedWeightGoal = getFromStorage<number | null>(SETTINGS_KEYS.weightGoal, null)
-      setWeightGoalState(savedWeightGoal && savedWeightGoal > 0 ? savedWeightGoal : null)
-      const savedCalorieGoal = getFromStorage<number | null>(SETTINGS_KEYS.calorieGoal, null)
-      setCalorieGoalState(savedCalorieGoal && savedCalorieGoal > 0 ? savedCalorieGoal : null)
+      // Load user settings (from Supabase if authenticated, otherwise localStorage)
+      const loadedSettings = await userSettingsOps.get(userId)
+      setUserNameState(loadedSettings.userName)
+      setWeightGoalState(loadedSettings.weightGoal && loadedSettings.weightGoal > 0 ? loadedSettings.weightGoal : null)
+      setCalorieGoalState(loadedSettings.calorieGoal && loadedSettings.calorieGoal > 0 ? loadedSettings.calorieGoal : null)
+      setOnboardingCompleteState(loadedSettings.onboardingComplete)
+      setTutorialCompleteState(loadedSettings.tutorialComplete)
 
       // Load finance encryption key
       const savedEncryptionKey = getFromStorage<string | null>(SETTINGS_KEYS.financeEncryptionKey, null)
@@ -752,38 +753,40 @@ export function useKnarrData() {
     return newSnapshot
   }, [financeEncryptionKey, financeAccounts, netWorthSnapshots, userId])
 
-  // Settings operations (always localStorage)
-  const setUserName = useCallback((name: string) => {
+  // Settings operations (synced to Supabase when authenticated)
+  const setUserName = useCallback(async (name: string) => {
     setUserNameState(name)
-    setToStorage(SETTINGS_KEYS.userName, name)
-  }, [])
+    await userSettingsOps.save(userId, { userName: name })
+  }, [userId])
 
-  const setWeightGoal = useCallback((goal: number | null) => {
+  const setWeightGoal = useCallback(async (goal: number | null) => {
     setWeightGoalState(goal)
-    setToStorage(SETTINGS_KEYS.weightGoal, goal)
-  }, [])
+    await userSettingsOps.save(userId, { weightGoal: goal })
+  }, [userId])
 
-  const setCalorieGoal = useCallback((goal: number | null) => {
+  const setCalorieGoal = useCallback(async (goal: number | null) => {
     setCalorieGoalState(goal)
-    setToStorage(SETTINGS_KEYS.calorieGoal, goal)
-  }, [])
+    await userSettingsOps.save(userId, { calorieGoal: goal })
+  }, [userId])
 
-  // Onboarding helpers
+  // Onboarding helpers (synced to Supabase)
   const getOnboardingComplete = useCallback(() => {
-    return getFromStorage(SETTINGS_KEYS.onboardingComplete, false)
-  }, [])
+    return onboardingComplete
+  }, [onboardingComplete])
 
-  const setOnboardingComplete = useCallback((value: boolean) => {
-    setToStorage(SETTINGS_KEYS.onboardingComplete, value)
-  }, [])
+  const setOnboardingComplete = useCallback(async (value: boolean) => {
+    setOnboardingCompleteState(value)
+    await userSettingsOps.save(userId, { onboardingComplete: value })
+  }, [userId])
 
   const getTutorialComplete = useCallback(() => {
-    return getFromStorage(SETTINGS_KEYS.tutorialComplete, false)
-  }, [])
+    return tutorialComplete
+  }, [tutorialComplete])
 
-  const setTutorialComplete = useCallback((value: boolean) => {
-    setToStorage(SETTINGS_KEYS.tutorialComplete, value)
-  }, [])
+  const setTutorialComplete = useCallback(async (value: boolean) => {
+    setTutorialCompleteState(value)
+    await userSettingsOps.save(userId, { tutorialComplete: value })
+  }, [userId])
 
   // Clear all data
   const clearAllData = useCallback(async () => {
@@ -806,10 +809,13 @@ export function useKnarrData() {
       ])
     }
 
-    // Clear localStorage settings
+    // Clear localStorage settings (encryption key)
     Object.values(SETTINGS_KEYS).forEach(key => {
       localStorage.removeItem(key)
     })
+
+    // Reset user settings (in Supabase if authenticated)
+    await userSettingsOps.save(userId, DEFAULT_USER_SETTINGS)
 
     // Reset state
     setCalories([])
@@ -829,7 +835,9 @@ export function useKnarrData() {
     setUserNameState('Voyager')
     setWeightGoalState(null)
     setCalorieGoalState(null)
-  }, [useSupabase, calories, weights, habits, habitLogs, tasks, headings, messages, bearings, lifeGoals, waypoints, financeAccounts, financeTransactions, netWorthSnapshots])
+    setOnboardingCompleteState(false)
+    setTutorialCompleteState(false)
+  }, [useSupabase, userId, calories, weights, habits, habitLogs, tasks, headings, messages, bearings, lifeGoals, waypoints, financeAccounts, financeTransactions, netWorthSnapshots])
 
   return {
     // Loading state
@@ -853,6 +861,8 @@ export function useKnarrData() {
     userName,
     weightGoal,
     calorieGoal,
+    onboardingComplete,
+    tutorialComplete,
 
     // Calorie operations
     addCalorie,

@@ -38,4 +38,6 @@ export const ENTITY_TYPES = {
   FINANCE_ACCOUNT: 'finance_account',
   FINANCE_TRANSACTION: 'finance_transaction',
   NET_WORTH_SNAPSHOT: 'net_worth_snapshot',
+  // User settings (synced to Supabase)
+  USER_SETTINGS: 'user_settings',
 } as const

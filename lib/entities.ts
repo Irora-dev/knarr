@@ -303,3 +303,159 @@ export const settingsOps = {
     localStorage.setItem(`${STORAGE_PREFIX}settings_${key}`, JSON.stringify(value))
   },
 }
+
+// User settings interface
+export interface UserSettings {
+  userName: string
+  weightGoal: number | null
+  calorieGoal: number | null
+  onboardingComplete: boolean
+  tutorialComplete: boolean
+}
+
+// Default user settings
+export const DEFAULT_USER_SETTINGS: UserSettings = {
+  userName: 'Voyager',
+  weightGoal: null,
+  calorieGoal: null,
+  onboardingComplete: false,
+  tutorialComplete: false,
+}
+
+// User settings operations - syncs to Supabase when authenticated
+export const userSettingsOps = {
+  async get(userId: string): Promise<UserSettings> {
+    if (isSupabaseConfigured() && supabase && userId !== 'local-user') {
+      try {
+        const { data, error } = await supabase
+          .from('entities')
+          .select('*')
+          .eq('app_id', APP_CONFIG.appId)
+          .eq('user_id', userId)
+          .eq('entity_type', 'user_settings')
+          .single()
+
+        if (error) {
+          // No settings found, return defaults
+          if (error.code === 'PGRST116') {
+            return DEFAULT_USER_SETTINGS
+          }
+          console.error('Error fetching user settings:', error)
+          return DEFAULT_USER_SETTINGS
+        }
+
+        return { ...DEFAULT_USER_SETTINGS, ...(data?.data as Partial<UserSettings>) }
+      } catch (err) {
+        console.error('Error fetching user settings:', err)
+        return DEFAULT_USER_SETTINGS
+      }
+    }
+
+    // Fallback to localStorage for local-user
+    if (typeof window === 'undefined') return DEFAULT_USER_SETTINGS
+
+    return {
+      userName: localStorage.getItem(`${STORAGE_PREFIX}userName`)
+        ? JSON.parse(localStorage.getItem(`${STORAGE_PREFIX}userName`)!)
+        : DEFAULT_USER_SETTINGS.userName,
+      weightGoal: localStorage.getItem(`${STORAGE_PREFIX}weightGoal`)
+        ? JSON.parse(localStorage.getItem(`${STORAGE_PREFIX}weightGoal`)!)
+        : DEFAULT_USER_SETTINGS.weightGoal,
+      calorieGoal: localStorage.getItem(`${STORAGE_PREFIX}calorieGoal`)
+        ? JSON.parse(localStorage.getItem(`${STORAGE_PREFIX}calorieGoal`)!)
+        : DEFAULT_USER_SETTINGS.calorieGoal,
+      onboardingComplete: localStorage.getItem(`${STORAGE_PREFIX}onboardingComplete`)
+        ? JSON.parse(localStorage.getItem(`${STORAGE_PREFIX}onboardingComplete`)!)
+        : DEFAULT_USER_SETTINGS.onboardingComplete,
+      tutorialComplete: localStorage.getItem(`${STORAGE_PREFIX}tutorialComplete`)
+        ? JSON.parse(localStorage.getItem(`${STORAGE_PREFIX}tutorialComplete`)!)
+        : DEFAULT_USER_SETTINGS.tutorialComplete,
+    }
+  },
+
+  async save(userId: string, settings: Partial<UserSettings>): Promise<UserSettings> {
+    const now = new Date().toISOString()
+
+    if (isSupabaseConfigured() && supabase && userId !== 'local-user') {
+      try {
+        // First try to get existing settings
+        const { data: existing } = await supabase
+          .from('entities')
+          .select('*')
+          .eq('app_id', APP_CONFIG.appId)
+          .eq('user_id', userId)
+          .eq('entity_type', 'user_settings')
+          .single()
+
+        const currentSettings = existing?.data as UserSettings || DEFAULT_USER_SETTINGS
+        const updatedSettings = { ...currentSettings, ...settings }
+
+        if (existing) {
+          // Update existing settings
+          const { data: updated, error } = await supabase
+            .from('entities')
+            .update({
+              data: updatedSettings,
+              updated_at: now,
+            })
+            .eq('id', existing.id)
+            .select()
+            .single()
+
+          if (error) {
+            console.error('Error updating user settings:', error)
+            throw error
+          }
+
+          return updated?.data as UserSettings
+        } else {
+          // Create new settings
+          const { data: created, error } = await supabase
+            .from('entities')
+            .insert({
+              id: generateId(),
+              app_id: APP_CONFIG.appId,
+              user_id: userId,
+              entity_type: 'user_settings',
+              data: updatedSettings,
+              created_at: now,
+              updated_at: now,
+            })
+            .select()
+            .single()
+
+          if (error) {
+            console.error('Error creating user settings:', error)
+            throw error
+          }
+
+          return created?.data as UserSettings
+        }
+      } catch (err) {
+        console.error('Error saving user settings:', err)
+        throw err
+      }
+    }
+
+    // Fallback to localStorage for local-user
+    if (typeof window !== 'undefined') {
+      if (settings.userName !== undefined) {
+        localStorage.setItem(`${STORAGE_PREFIX}userName`, JSON.stringify(settings.userName))
+      }
+      if (settings.weightGoal !== undefined) {
+        localStorage.setItem(`${STORAGE_PREFIX}weightGoal`, JSON.stringify(settings.weightGoal))
+      }
+      if (settings.calorieGoal !== undefined) {
+        localStorage.setItem(`${STORAGE_PREFIX}calorieGoal`, JSON.stringify(settings.calorieGoal))
+      }
+      if (settings.onboardingComplete !== undefined) {
+        localStorage.setItem(`${STORAGE_PREFIX}onboardingComplete`, JSON.stringify(settings.onboardingComplete))
+      }
+      if (settings.tutorialComplete !== undefined) {
+        localStorage.setItem(`${STORAGE_PREFIX}tutorialComplete`, JSON.stringify(settings.tutorialComplete))
+      }
+    }
+
+    return this.get(userId)
+  },
+}
