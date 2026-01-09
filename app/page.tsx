@@ -48,7 +48,9 @@ import {
   Utensils,
   Info,
   Sparkles,
-  ChevronDown
+  ChevronDown,
+  LayoutDashboard,
+  Wallet
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { isSupabaseConfigured } from '../lib/supabase'
@@ -3745,11 +3747,18 @@ export default function KnarrDashboard() {
   const [selectedTaskDate, setSelectedTaskDate] = useState<string | null>(null)
 
   // Chart filter state for View mode - single select toggle (null = show all)
-  const [activeChart, setActiveChart] = useState<string | null>(null)
+  // View mode tabs
+  const VIEW_TABS = [
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'health', label: 'Health', icon: Heart },
+    { id: 'goals', label: 'Goals', icon: Star },
+    { id: 'reflect', label: 'Reflect', icon: BookOpen },
+    { id: 'wealth', label: 'Wealth', icon: Wallet },
+    { id: 'protocol', label: 'Protocol', icon: Zap },
+  ] as const
 
-  const toggleChartFilter = (chart: string) => {
-    setActiveChart(prev => prev === chart ? null : chart)
-  }
+  type ViewTab = typeof VIEW_TABS[number]['id']
+  const [activeViewTab, setActiveViewTab] = useState<ViewTab>('overview')
 
   // Auth and onboarding state
   const [devBypass, setDevBypass] = useState(false)
@@ -5167,124 +5176,51 @@ export default function KnarrDashboard() {
             <span className="text-sm text-fog">{topInsight?.text || 'Keep logging to unlock insights about your patterns'}</span>
           </div>
 
-          {/* Chart Filter Buttons - Single Select Toggle */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            <button
-              onClick={() => toggleChartFilter('weight')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
-                activeChart === 'weight'
-                  ? 'bg-fjord/20 text-fjord border border-fjord/30'
-                  : activeChart === null
-                    ? 'bg-fjord/10 text-fjord/70 border border-fjord/20'
-                    : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
-              }`}
-            >
-              <Scale className="w-3.5 h-3.5" />
-              Weight
-            </button>
-            <button
-              onClick={() => toggleChartFilter('calories')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
-                activeChart === 'calories'
-                  ? 'bg-ember/20 text-ember border border-ember/30'
-                  : activeChart === null
-                    ? 'bg-ember/10 text-ember/70 border border-ember/20'
-                    : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
-              }`}
-            >
-              <Flame className="w-3.5 h-3.5" />
-              Calories
-            </button>
-            <button
-              onClick={() => toggleChartFilter('habits')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
-                activeChart === 'habits'
-                  ? 'bg-victory-green/20 text-victory-green border border-victory-green/30'
-                  : activeChart === null
-                    ? 'bg-victory-green/10 text-victory-green/70 border border-victory-green/20'
-                    : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
-              }`}
-            >
-              <CheckSquare className="w-3.5 h-3.5" />
-              Habits
-            </button>
-            <button
-              onClick={() => toggleChartFilter('tasks')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
-                activeChart === 'tasks'
-                  ? 'bg-ember/20 text-ember border border-ember/30'
-                  : activeChart === null
-                    ? 'bg-ember/10 text-ember/70 border border-ember/20'
-                    : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
-              }`}
-            >
-              <Target className="w-3.5 h-3.5" />
-              Tasks
-            </button>
-            <button
-              onClick={() => toggleChartFilter('bearings')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
-                activeChart === 'bearings'
-                  ? 'bg-fjord/20 text-fjord border border-fjord/30'
-                  : activeChart === null
-                    ? 'bg-fjord/10 text-fjord/70 border border-fjord/20'
-                    : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
-              }`}
-            >
-              <Anchor className="w-3.5 h-3.5" />
-              Bearings
-            </button>
-            <button
-              onClick={() => toggleChartFilter('finance')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
-                activeChart === 'finance'
-                  ? 'bg-victory-green/20 text-victory-green border border-victory-green/30'
-                  : activeChart === null
-                    ? 'bg-victory-green/10 text-victory-green/70 border border-victory-green/20'
-                    : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
-              }`}
-            >
-              <DollarSign className="w-3.5 h-3.5" />
-              Finance
-            </button>
-            <button
-              onClick={() => toggleChartFilter('routine')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
-                activeChart === 'routine'
-                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                  : activeChart === null
-                    ? 'bg-amber-500/10 text-amber-400/70 border border-amber-500/20'
-                    : 'bg-iron-slate/30 text-stone border border-transparent hover:bg-iron-slate/50'
-              }`}
-            >
-              <Zap className="w-3.5 h-3.5" />
-              Routine
-            </button>
+          {/* View Mode Tabs */}
+          <div className="flex gap-1 mb-4 p-1 glass-recessed rounded-xl overflow-x-auto">
+            {VIEW_TABS.map((tab) => {
+              const TabIcon = tab.icon
+              const isActive = activeViewTab === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveViewTab(tab.id as ViewTab)}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                    isActive
+                      ? 'bg-ember text-forge-black'
+                      : 'text-stone hover:text-bone hover:bg-white/5'
+                  }`}
+                >
+                  <TabIcon className="w-3.5 h-3.5" />
+                  {tab.label}
+                </button>
+              )
+            })}
           </div>
 
           {/* Weight Chart - Full Width */}
-          {(activeChart === null || activeChart === 'weight') && (
+          {(activeViewTab === 'overview' || activeViewTab === 'health') && (
             <div id="tutorial-charts" className="glass p-3 sm:p-4 mb-3 sm:mb-4 h-[240px] sm:h-[280px]">
               <WeightChart weights={weights} goal={weightGoal} onLoadSample={loadSampleWeightData} onLogWeight={() => { setMode('log') }} />
             </div>
           )}
 
           {/* Calorie Chart - Full Width */}
-          {(activeChart === null || activeChart === 'calories') && (
+          {(activeViewTab === 'overview' || activeViewTab === 'health') && (
             <div className="glass p-3 sm:p-4 mb-3 sm:mb-4 h-[240px] sm:h-[280px]">
               <CalorieChart calories={calories} goal={calorieGoal} onLoadSample={loadSampleCalorieData} />
             </div>
           )}
 
           {/* Habit Chart - Full Width */}
-          {(activeChart === null || activeChart === 'habits') && (
+          {(activeViewTab === 'overview' || activeViewTab === 'health') && (
             <div id="tutorial-habits" className="glass p-3 sm:p-4 mb-3 sm:mb-4 h-[240px] sm:h-[280px]">
               <HabitChart habitLogs={habitLogs} habits={habits} onLoadSample={loadSampleHabitData} />
             </div>
           )}
 
           {/* Task Manager Section */}
-          {(activeChart === null || activeChart === 'tasks') && (
+          {(activeViewTab === 'overview' || activeViewTab === 'reflect') && (
             <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display text-sm text-bone flex items-center gap-2">
@@ -5378,7 +5314,7 @@ export default function KnarrDashboard() {
           )}
 
           {/* Bearings (Reflections) Section */}
-          {(activeChart === null || activeChart === 'bearings') && (
+          {activeViewTab === 'reflect' && (
             <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display text-sm text-bone flex items-center gap-2">
@@ -5512,7 +5448,7 @@ export default function KnarrDashboard() {
           )}
 
           {/* Finance Section */}
-          {(activeChart === null || activeChart === 'finance') && (
+          {activeViewTab === 'wealth' && (
             <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display text-sm text-bone flex items-center gap-2">
@@ -5664,7 +5600,7 @@ export default function KnarrDashboard() {
           )}
 
           {/* Dopamine Routine Section */}
-          {(activeChart === null || activeChart === 'routine') && (
+          {activeViewTab === 'protocol' && (
             <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display text-sm text-bone flex items-center gap-2">
@@ -5860,6 +5796,7 @@ export default function KnarrDashboard() {
           )}
 
           {/* Life Goals / True North Section */}
+          {activeViewTab === 'goals' && (
           <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-display text-sm text-bone flex items-center gap-2">
@@ -5976,6 +5913,7 @@ export default function KnarrDashboard() {
               </div>
             )}
           </div>
+          )}
             </motion.div>
           )}
           </AnimatePresence>
