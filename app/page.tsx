@@ -47,7 +47,8 @@ import {
   BedDouble,
   Utensils,
   Info,
-  Sparkles
+  Sparkles,
+  ChevronDown
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { isSupabaseConfigured } from '../lib/supabase'
@@ -3712,9 +3713,22 @@ export default function KnarrDashboard() {
 
   // Dopamine Routine state
   const [activeRoutinePhase, setActiveRoutinePhase] = useState<RoutinePhase | 'all'>('all')
+  const [expandedPhases, setExpandedPhases] = useState<Set<RoutinePhase>>(new Set())
   const [selectedSupplement, setSelectedSupplement] = useState<SupplementItem | null>(null)
   const [selectedSupplementPhase, setSelectedSupplementPhase] = useState<RoutinePhaseData | null>(null)
   const [showSupplementModal, setShowSupplementModal] = useState(false)
+
+  const togglePhaseExpanded = (phaseId: RoutinePhase) => {
+    setExpandedPhases(prev => {
+      const next = new Set(prev)
+      if (next.has(phaseId)) {
+        next.delete(phaseId)
+      } else {
+        next.add(phaseId)
+      }
+      return next
+    })
+  }
 
   // Message delivery popup state
   const [showMessagePopup, setShowMessagePopup] = useState(false)
@@ -5692,11 +5706,12 @@ export default function KnarrDashboard() {
               </div>
 
               {/* Phase Cards */}
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {DOPAMINE_ROUTINE.filter(
                   (phase) => activeRoutinePhase === 'all' || activeRoutinePhase === phase.id
                 ).map((phase) => {
                   const IconComponent = phase.icon
+                  const isExpanded = expandedPhases.has(phase.id)
                   return (
                     <motion.div
                       key={phase.id}
@@ -5704,8 +5719,11 @@ export default function KnarrDashboard() {
                       animate={{ opacity: 1, y: 0 }}
                       className={`rounded-xl border ${phase.color.replace('text-', 'border-')}/20 overflow-hidden`}
                     >
-                      {/* Phase Header */}
-                      <div className={`${phase.bgColor} px-4 py-3`}>
+                      {/* Phase Header - Clickable */}
+                      <button
+                        onClick={() => togglePhaseExpanded(phase.id)}
+                        className={`${phase.bgColor} px-4 py-3 w-full text-left hover:brightness-110 transition-all`}
+                      >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className={`w-8 h-8 rounded-lg bg-forge-black/30 flex items-center justify-center`}>
@@ -5716,81 +5734,99 @@ export default function KnarrDashboard() {
                               <p className="text-xs text-fog">{phase.subtitle} • {phase.time}</p>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-xs text-fog">{phase.goal}</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Phase Content */}
-                      <div className="p-4 bg-forge-black/30">
-                        {/* Environment Setup */}
-                        {phase.environment && (
-                          <div className="mb-3 flex flex-wrap gap-2">
-                            {phase.environment.map((env, i) => (
-                              <span key={i} className="text-xs px-2 py-1 rounded-full bg-iron-slate/50 text-fog">
-                                {env}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Trigger (for Rescue) */}
-                        {phase.trigger && (
-                          <div className="mb-3 p-2 rounded-lg bg-blood-red/10 border border-blood-red/20">
-                            <p className="text-xs text-blood-red">
-                              <span className="font-medium">Trigger:</span> {phase.trigger}
-                            </p>
-                            {phase.limit && (
-                              <p className="text-xs text-blood-red/70 mt-1">{phase.limit}</p>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Supplement Items */}
-                        <div className="space-y-2">
-                          {phase.items.map((item) => (
-                            <button
-                              key={item.id}
-                              onClick={() => {
-                                setSelectedSupplement(item)
-                                setSelectedSupplementPhase(phase)
-                                setShowSupplementModal(true)
-                              }}
-                              className="w-full flex items-center justify-between p-3 rounded-lg glass-recessed hover:bg-white/5 transition-colors group"
+                          <div className="flex items-center gap-3">
+                            <p className="text-xs text-fog hidden sm:block">{phase.goal}</p>
+                            <motion.div
+                              animate={{ rotate: isExpanded ? 180 : 0 }}
+                              transition={{ duration: 0.2 }}
                             >
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div className={`w-6 h-6 rounded-md ${phase.bgColor} flex items-center justify-center shrink-0`}>
-                                  <Pill className={`w-3 h-3 ${phase.color}`} />
-                                </div>
-                                <div className="text-left min-w-0">
-                                  <p className="text-sm text-bone truncate flex items-center gap-2">
-                                    {item.name}
-                                    {item.optional && (
-                                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-iron-slate/50 text-stone">
-                                        Optional
-                                      </span>
-                                    )}
-                                  </p>
-                                  <p className="text-xs text-fog truncate">{item.effect}</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-xs font-mono text-stone">{item.dosage}</span>
-                                <Info className="w-4 h-4 text-stone group-hover:text-bone transition-colors" />
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Protocol Rule */}
-                        {phase.protocolRule && (
-                          <div className="mt-3 p-2 rounded-lg bg-ember/10 border border-ember/20 flex items-start gap-2">
-                            <AlertTriangle className="w-4 h-4 text-ember shrink-0 mt-0.5" />
-                            <p className="text-xs text-ember">{phase.protocolRule}</p>
+                              <ChevronDown className={`w-5 h-5 ${phase.color}`} />
+                            </motion.div>
                           </div>
+                        </div>
+                      </button>
+
+                      {/* Phase Content - Collapsible */}
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="p-4 bg-forge-black/30">
+                              {/* Environment Setup */}
+                              {phase.environment && (
+                                <div className="mb-3 flex flex-wrap gap-2">
+                                  {phase.environment.map((env, i) => (
+                                    <span key={i} className="text-xs px-2 py-1 rounded-full bg-iron-slate/50 text-fog">
+                                      {env}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Trigger (for Rescue) */}
+                              {phase.trigger && (
+                                <div className="mb-3 p-2 rounded-lg bg-blood-red/10 border border-blood-red/20">
+                                  <p className="text-xs text-blood-red">
+                                    <span className="font-medium">Trigger:</span> {phase.trigger}
+                                  </p>
+                                  {phase.limit && (
+                                    <p className="text-xs text-blood-red/70 mt-1">{phase.limit}</p>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Supplement Items */}
+                              <div className="space-y-2">
+                                {phase.items.map((item) => (
+                                  <button
+                                    key={item.id}
+                                    onClick={() => {
+                                      setSelectedSupplement(item)
+                                      setSelectedSupplementPhase(phase)
+                                      setShowSupplementModal(true)
+                                    }}
+                                    className="w-full flex items-center justify-between p-3 rounded-lg glass-recessed hover:bg-white/5 transition-colors group"
+                                  >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <div className={`w-6 h-6 rounded-md ${phase.bgColor} flex items-center justify-center shrink-0`}>
+                                        <Pill className={`w-3 h-3 ${phase.color}`} />
+                                      </div>
+                                      <div className="text-left min-w-0">
+                                        <p className="text-sm text-bone truncate flex items-center gap-2">
+                                          {item.name}
+                                          {item.optional && (
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-iron-slate/50 text-stone">
+                                              Optional
+                                            </span>
+                                          )}
+                                        </p>
+                                        <p className="text-xs text-fog truncate">{item.effect}</p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <span className="text-xs font-mono text-stone">{item.dosage}</span>
+                                      <Info className="w-4 h-4 text-stone group-hover:text-bone transition-colors" />
+                                    </div>
+                                  </button>
+                                ))}
+                              </div>
+
+                              {/* Protocol Rule */}
+                              {phase.protocolRule && (
+                                <div className="mt-3 p-2 rounded-lg bg-ember/10 border border-ember/20 flex items-start gap-2">
+                                  <AlertTriangle className="w-4 h-4 text-ember shrink-0 mt-0.5" />
+                                  <p className="text-xs text-ember">{phase.protocolRule}</p>
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
                         )}
-                      </div>
+                      </AnimatePresence>
                     </motion.div>
                   )
                 })}
