@@ -3746,11 +3746,11 @@ export default function KnarrDashboard() {
   const [showTaskDatePicker, setShowTaskDatePicker] = useState(false)
   const [selectedTaskDate, setSelectedTaskDate] = useState<string | null>(null)
 
-  // Chart filter state for View mode - single select toggle (null = show all)
   // View mode tabs
   const VIEW_TABS = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'health', label: 'Health', icon: Heart },
+    { id: 'todos', label: 'Todos', icon: CheckSquare },
     { id: 'goals', label: 'Goals', icon: Star },
     { id: 'reflect', label: 'Reflect', icon: BookOpen },
     { id: 'wealth', label: 'Wealth', icon: Wallet },
@@ -5213,14 +5213,14 @@ export default function KnarrDashboard() {
           )}
 
           {/* Habit Chart - Full Width */}
-          {(activeViewTab === 'overview' || activeViewTab === 'health') && (
+          {(activeViewTab === 'overview' || activeViewTab === 'todos') && (
             <div id="tutorial-habits" className="glass p-3 sm:p-4 mb-3 sm:mb-4 h-[240px] sm:h-[280px]">
               <HabitChart habitLogs={habitLogs} habits={habits} onLoadSample={loadSampleHabitData} />
             </div>
           )}
 
           {/* Task Manager Section */}
-          {(activeViewTab === 'overview' || activeViewTab === 'reflect') && (
+          {(activeViewTab === 'overview' || activeViewTab === 'todos') && (
             <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-display text-sm text-bone flex items-center gap-2">
