@@ -3652,6 +3652,7 @@ export default function KnarrDashboard() {
     calorieGoal,
     addCalorie,
     addWeight,
+    deleteWeight,
     addHabit,
     updateHabit,
     deleteHabit,
@@ -6039,9 +6040,11 @@ export default function KnarrDashboard() {
         userName={userName}
         calorieGoal={calorieGoal}
         weightGoal={weightGoal}
+        weights={weights}
         onUpdateUserName={handleUpdateUserName}
         onUpdateCalorieGoal={handleUpdateCalorieGoalFromSettings}
         onUpdateWeightGoal={handleUpdateWeightGoalFromSettings}
+        onDeleteWeight={deleteWeight}
         onClearAllData={handleClearAllData}
         onResetOnboarding={handleResetOnboarding}
       />

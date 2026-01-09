@@ -2,7 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Settings, X, User, Flame, Goal, RefreshCw, Trash2 } from 'lucide-react'
+import { Settings, X, User, Flame, Goal, RefreshCw, Trash2, Scale, ChevronDown, ChevronUp } from 'lucide-react'
+
+interface WeightEntry {
+  id: string
+  date: string
+  weight: number
+  created_at: string
+}
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -10,9 +17,11 @@ interface SettingsModalProps {
   userName: string
   calorieGoal: number | null
   weightGoal: number | null
+  weights?: WeightEntry[]
   onUpdateUserName: (name: string) => void
   onUpdateCalorieGoal: (goal: number | null) => void
   onUpdateWeightGoal: (goal: number | null) => void
+  onDeleteWeight?: (id: string) => void
   onClearAllData: () => void
   onResetOnboarding: () => void
 }
@@ -23,9 +32,11 @@ export function SettingsModal({
   userName,
   calorieGoal,
   weightGoal,
+  weights = [],
   onUpdateUserName,
   onUpdateCalorieGoal,
   onUpdateWeightGoal,
+  onDeleteWeight,
   onClearAllData,
   onResetOnboarding
 }: SettingsModalProps) {
@@ -33,6 +44,8 @@ export function SettingsModal({
   const [editedCalorieGoal, setEditedCalorieGoal] = useState(calorieGoal?.toString() ?? '')
   const [editedWeightGoal, setEditedWeightGoal] = useState(weightGoal?.toString() ?? '')
   const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [showWeightHistory, setShowWeightHistory] = useState(false)
+  const [weightToDelete, setWeightToDelete] = useState<string | null>(null)
 
   useEffect(() => {
     if (isOpen) {
@@ -40,8 +53,21 @@ export function SettingsModal({
       setEditedCalorieGoal(calorieGoal?.toString() ?? '')
       setEditedWeightGoal(weightGoal?.toString() ?? '')
       setShowClearConfirm(false)
+      setShowWeightHistory(false)
+      setWeightToDelete(null)
     }
   }, [isOpen, userName, calorieGoal, weightGoal])
+
+  const sortedWeights = [...weights].sort((a, b) =>
+    new Date(b.date).getTime() - new Date(a.date).getTime()
+  )
+
+  const handleDeleteWeight = (id: string) => {
+    if (onDeleteWeight) {
+      onDeleteWeight(id)
+      setWeightToDelete(null)
+    }
+  }
 
   const handleSaveName = () => {
     if (editedName.trim()) {
@@ -196,6 +222,86 @@ export function SettingsModal({
                   </button>
                 </div>
               </div>
+
+              {/* Weight History Section */}
+              {weights.length > 0 && (
+                <div className="space-y-2">
+                  <button
+                    onClick={() => setShowWeightHistory(!showWeightHistory)}
+                    className="w-full flex items-center justify-between text-xs text-stone uppercase tracking-wider"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Scale className="w-3.5 h-3.5" />
+                      Weight History ({weights.length} entries)
+                    </span>
+                    {showWeightHistory ? (
+                      <ChevronUp className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    )}
+                  </button>
+
+                  <AnimatePresence>
+                    {showWeightHistory && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="max-h-48 overflow-y-auto rounded-lg bg-iron-slate/30 p-2 space-y-1">
+                          {sortedWeights.map((entry) => (
+                            <div
+                              key={entry.id}
+                              className="flex items-center justify-between p-2 rounded bg-longhouse/50 hover:bg-longhouse transition-colors"
+                            >
+                              <div className="flex items-center gap-3">
+                                <span className="text-fog text-sm font-mono">
+                                  {new Date(entry.date).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                  })}
+                                </span>
+                                <span className="text-bone font-mono font-medium">
+                                  {entry.weight} kg
+                                </span>
+                              </div>
+                              {weightToDelete === entry.id ? (
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => setWeightToDelete(null)}
+                                    className="px-2 py-1 text-xs text-fog hover:text-bone transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteWeight(entry.id)}
+                                    className="px-2 py-1 text-xs text-red-400 hover:text-red-300 transition-colors"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setWeightToDelete(entry.id)}
+                                  className="p-1 text-stone hover:text-red-400 transition-colors"
+                                  title="Delete entry"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-stone mt-2">
+                          Delete stale entries to fix incorrect averages
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
 
               {/* Divider */}
               <div className="border-t border-iron-slate/50 pt-6">

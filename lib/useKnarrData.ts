@@ -410,6 +410,11 @@ export function useKnarrData() {
     }
   }, [weights, userId])
 
+  const deleteWeight = useCallback(async (id: string) => {
+    await weightEntryOps.delete(id)
+    setWeights(prev => prev.filter(w => w.id !== id))
+  }, [])
+
   // CRUD operations for habits
   const addHabit = useCallback(async (name: string) => {
     const created = await habitOps.create(userId, {
@@ -869,6 +874,7 @@ export function useKnarrData() {
 
     // Weight operations
     addWeight,
+    deleteWeight,
 
     // Habit operations
     addHabit,
