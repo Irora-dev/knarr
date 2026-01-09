@@ -40,6 +40,7 @@ export interface HabitLog {
 }
 
 export type TaskRecurrence = 'none' | 'daily' | 'weekly' | 'monthly'
+export type TaskPriority = 'low' | 'medium' | 'high' | null
 
 export interface Task {
   id: string
@@ -49,6 +50,7 @@ export interface Task {
   completed: boolean
   completed_at: string | null    // timestamp for animation timing
   recurrence: TaskRecurrence     // recurring pattern
+  priority: TaskPriority         // task priority level
   created_at: string
 }
 

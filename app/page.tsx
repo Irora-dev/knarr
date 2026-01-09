@@ -3748,6 +3748,7 @@ export default function KnarrDashboard() {
   const [showTaskDatePicker, setShowTaskDatePicker] = useState(false)
   const [selectedTaskDate, setSelectedTaskDate] = useState<string | null>(null)
   const [selectedTaskRecurrence, setSelectedTaskRecurrence] = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none')
+  const [selectedTaskPriority, setSelectedTaskPriority] = useState<'low' | 'medium' | 'high' | null>(null)
 
   // View mode tabs
   const VIEW_TABS = [
@@ -3856,9 +3857,14 @@ export default function KnarrDashboard() {
   const selectedDateCompletedHabits = selectedDateHabitLogs.filter(l => l.completed).length
 
   // Today's tasks: scheduled for today OR no date specified (and not completed)
-  const todayTasks = tasks.filter(t =>
-    !t.completed && (t.scheduled_date === today || t.scheduled_date === null)
-  )
+  const priorityOrder = { high: 0, medium: 1, low: 2, null: 3 }
+  const todayTasks = tasks
+    .filter(t => !t.completed && (t.scheduled_date === today || t.scheduled_date === null))
+    .sort((a, b) => {
+      const aPriority = priorityOrder[a.priority ?? 'null'] ?? 3
+      const bPriority = priorityOrder[b.priority ?? 'null'] ?? 3
+      return aPriority - bPriority
+    })
 
   // Upcoming tasks: scheduled for future dates
   const upcomingTasks = tasks.filter(t =>
@@ -4138,8 +4144,8 @@ export default function KnarrDashboard() {
   }
 
   // Task handlers
-  const handleAddTask = (name: string, scheduledDate?: string, recurrence: 'none' | 'daily' | 'weekly' | 'monthly' = 'none') => {
-    addTask(name, scheduledDate, recurrence)
+  const handleAddTask = (name: string, scheduledDate?: string, recurrence: 'none' | 'daily' | 'weekly' | 'monthly' = 'none', priority: 'low' | 'medium' | 'high' | null = null) => {
+    addTask(name, scheduledDate, recurrence, priority)
   }
 
   const handleCompleteTask = (id: string) => {
@@ -4706,6 +4712,15 @@ export default function KnarrDashboard() {
                               <span className={`text-sm flex-1 ${isCompleting ? 'text-stone line-through' : 'text-bone'}`}>
                                 {task.name}
                               </span>
+                              {task.priority && (
+                                <Flag className={`w-3 h-3 ${
+                                  task.priority === 'high'
+                                    ? 'text-blood-red'
+                                    : task.priority === 'medium'
+                                    ? 'text-warning-amber'
+                                    : 'text-victory-green'
+                                }`} />
+                              )}
                               {task.recurrence && task.recurrence !== 'none' && (
                                 <span className="text-xs text-fjord bg-fjord/10 px-1.5 py-0.5 rounded flex items-center gap-1">
                                   <Repeat className="w-3 h-3" />
@@ -4739,10 +4754,11 @@ export default function KnarrDashboard() {
                       onChange={(e) => setNewTaskName(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && newTaskName.trim()) {
-                          handleAddTask(newTaskName.trim(), selectedTaskDate || undefined, selectedTaskRecurrence)
+                          handleAddTask(newTaskName.trim(), selectedTaskDate || undefined, selectedTaskRecurrence, selectedTaskPriority)
                           setNewTaskName('')
                           setSelectedTaskDate(null)
                           setSelectedTaskRecurrence('none')
+                          setSelectedTaskPriority(null)
                           setShowTaskDatePicker(false)
                         }
                       }}
@@ -4774,13 +4790,33 @@ export default function KnarrDashboard() {
                     >
                       <Repeat className="w-4 h-4" />
                     </button>
+                    <button
+                      onClick={() => {
+                        const options: (typeof selectedTaskPriority)[] = [null, 'low', 'medium', 'high']
+                        const currentIndex = options.indexOf(selectedTaskPriority)
+                        setSelectedTaskPriority(options[(currentIndex + 1) % options.length]!)
+                      }}
+                      className={`p-2 rounded-lg transition-colors ${
+                        selectedTaskPriority === 'high'
+                          ? 'bg-blood-red/20 text-blood-red'
+                          : selectedTaskPriority === 'medium'
+                          ? 'bg-warning-amber/20 text-warning-amber'
+                          : selectedTaskPriority === 'low'
+                          ? 'bg-victory-green/20 text-victory-green'
+                          : 'bg-iron-slate/30 text-stone hover:text-bone hover:bg-iron-slate/50'
+                      }`}
+                      title={`Priority: ${selectedTaskPriority || 'none'}`}
+                    >
+                      <Flag className="w-4 h-4" />
+                    </button>
                     {newTaskName.trim() && (
                       <button
                         onClick={() => {
-                          handleAddTask(newTaskName.trim(), selectedTaskDate || undefined, selectedTaskRecurrence)
+                          handleAddTask(newTaskName.trim(), selectedTaskDate || undefined, selectedTaskRecurrence, selectedTaskPriority)
                           setNewTaskName('')
                           setSelectedTaskDate(null)
                           setSelectedTaskRecurrence('none')
+                          setSelectedTaskPriority(null)
                           setShowTaskDatePicker(false)
                         }}
                         className="p-2 rounded-lg bg-ember/20 text-ember hover:bg-ember/30 transition-colors"
@@ -4790,8 +4826,8 @@ export default function KnarrDashboard() {
                     )}
                   </div>
 
-                  {/* Selected date and recurrence badges */}
-                  {(selectedTaskDate || selectedTaskRecurrence !== 'none') && (
+                  {/* Selected date, recurrence, and priority badges */}
+                  {(selectedTaskDate || selectedTaskRecurrence !== 'none' || selectedTaskPriority) && (
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       {selectedTaskDate && (
                         <span className="text-xs text-ember bg-ember/10 px-2 py-1 rounded-full flex items-center gap-1">
@@ -4815,6 +4851,24 @@ export default function KnarrDashboard() {
                           {selectedTaskRecurrence.charAt(0).toUpperCase() + selectedTaskRecurrence.slice(1)}
                           <button
                             onClick={() => setSelectedTaskRecurrence('none')}
+                            className="ml-1 hover:text-bone"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      )}
+                      {selectedTaskPriority && (
+                        <span className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
+                          selectedTaskPriority === 'high'
+                            ? 'text-blood-red bg-blood-red/10'
+                            : selectedTaskPriority === 'medium'
+                            ? 'text-warning-amber bg-warning-amber/10'
+                            : 'text-victory-green bg-victory-green/10'
+                        }`}>
+                          <Flag className="w-3 h-3" />
+                          {selectedTaskPriority.charAt(0).toUpperCase() + selectedTaskPriority.slice(1)}
+                          <button
+                            onClick={() => setSelectedTaskPriority(null)}
                             className="ml-1 hover:text-bone"
                           >
                             <X className="w-3 h-3" />

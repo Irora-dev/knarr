@@ -226,6 +226,7 @@ export const taskOps = createEntityOperations<{
   completed: boolean
   completed_at: string | null
   recurrence: 'none' | 'daily' | 'weekly' | 'monthly'
+  priority: 'low' | 'medium' | 'high' | null
   created_at: string
 }>('task')
 
