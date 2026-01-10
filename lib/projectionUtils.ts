@@ -184,17 +184,23 @@ export function projectWeight(
   let currentIntake = avgDailyCalories
 
   for (let day = 0; day <= days; day++) {
-    // Recalculate TDEE weekly as weight changes (if profile available)
+    // Recalculate TDEE weekly as weight changes
     // Do this BEFORE calculating deficit so TDEE reflects current weight
-    if (day > 0 && day % 7 === 0 && profile && !profile.tdee_override) {
-      currentTDEE = calculateTDEE(
-        currentWeight,
-        profile.height_cm,
-        calculateAge(profile.birth_date),
-        profile.biological_sex,
-        profile.activity_level,
-        null // Don't use override for dynamic recalculation
-      )
+    if (day > 0 && day % 7 === 0) {
+      if (profile && !profile.tdee_override) {
+        // Use accurate calculation with profile
+        currentTDEE = calculateTDEE(
+          currentWeight,
+          profile.height_cm,
+          calculateAge(profile.birth_date),
+          profile.biological_sex,
+          profile.activity_level,
+          null // Don't use override for dynamic recalculation
+        )
+      } else {
+        // Use basic estimate without profile (still recalculates based on weight)
+        currentTDEE = estimateBasicTDEE(currentWeight)
+      }
 
       // In adaptive mode, adjust intake to maintain the same deficit
       if (adaptiveMode) {
