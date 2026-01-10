@@ -1,8 +1,15 @@
 'use client'
 
+interface PayloadEntry {
+  value: number | null
+  dataKey: string
+  name?: string
+  payload?: Record<string, unknown>
+}
+
 interface ChartTooltipProps {
   active?: boolean
-  payload?: Array<{ value: number | null; dataKey: string; name?: string }>
+  payload?: PayloadEntry[]
   label?: string
 }
 
@@ -20,6 +27,10 @@ export function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
   const pessimisticWeight = validEntries.find(e => e.dataKey === 'pessimistic_weight')
   const regularWeight = validEntries.find(e => e.dataKey === 'weight')
   const averageWeight = validEntries.find(e => e.dataKey === 'average')
+
+  // Get TDEE and target intake from the data point payload (available on projection points)
+  const tdeeValue = validEntries[0]?.payload?.tdee as number | undefined
+  const targetIntakeValue = validEntries[0]?.payload?.target_intake as number | undefined
 
   // Check if this is projection data
   const isProjectionData = historicalWeight || projectedWeight || optimisticWeight || pessimisticWeight
@@ -46,6 +57,20 @@ export function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
             <p className="font-mono text-xs text-stone">
               Range: {pessimisticWeight.value?.toFixed(1)} - {optimisticWeight.value?.toFixed(1)} kg
             </p>
+          )}
+          {!historicalWeight && (tdeeValue || targetIntakeValue) && (
+            <div className="mt-1 pt-1 border-t border-white/10">
+              {tdeeValue && (
+                <p className="font-mono text-xs text-ember">
+                  TDEE: {tdeeValue.toLocaleString()} kcal
+                </p>
+              )}
+              {targetIntakeValue && (
+                <p className="font-mono text-xs text-moss">
+                  Target: {targetIntakeValue.toLocaleString()} kcal
+                </p>
+              )}
+            </div>
           )}
         </div>
       ) : (

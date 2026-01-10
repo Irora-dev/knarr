@@ -159,6 +159,10 @@ function addDays(date: Date, days: number): Date {
 /**
  * Project weight over time based on calorie deficit/surplus
  * Recalculates TDEE weekly as weight changes
+ * Includes TDEE at each point for visualization
+ *
+ * @param adaptiveMode - If true, maintains consistent deficit by reducing intake as TDEE drops
+ * @param targetDeficit - The daily deficit to maintain in adaptive mode (default: calculated from initial values)
  */
 export function projectWeight(
   startWeight: number,
@@ -166,29 +170,41 @@ export function projectWeight(
   avgDailyCalories: number,
   days: number,
   adherence: number = 1.0,
-  profile?: UserProfile | null
+  profile?: UserProfile | null,
+  adaptiveMode: boolean = false,
+  targetDeficit?: number
 ): ProjectionDataPoint[] {
   const points: ProjectionDataPoint[] = []
   let currentWeight = startWeight
   let currentTDEE = baseTDEE
   const today = new Date()
 
-  for (let day = 0; day <= days; day++) {
-    // Calculate effective calories accounting for adherence
-    // Adherence affects how well person sticks to their calorie goal
-    const effectiveDeficit = (currentTDEE - avgDailyCalories) * adherence
+  // Calculate initial deficit to maintain in adaptive mode
+  const initialDeficit = targetDeficit ?? (baseTDEE - avgDailyCalories)
+  let currentIntake = avgDailyCalories
 
+  for (let day = 0; day <= days; day++) {
     // Recalculate TDEE weekly as weight changes (if profile available)
-    if (day > 0 && day % 7 === 0 && profile) {
+    // Do this BEFORE calculating deficit so TDEE reflects current weight
+    if (day > 0 && day % 7 === 0 && profile && !profile.tdee_override) {
       currentTDEE = calculateTDEE(
         currentWeight,
         profile.height_cm,
         calculateAge(profile.birth_date),
         profile.biological_sex,
         profile.activity_level,
-        profile.tdee_override
+        null // Don't use override for dynamic recalculation
       )
+
+      // In adaptive mode, adjust intake to maintain the same deficit
+      if (adaptiveMode) {
+        currentIntake = currentTDEE - initialDeficit
+      }
     }
+
+    // Calculate effective calories accounting for adherence
+    // Adherence affects how well person sticks to their calorie goal
+    const effectiveDeficit = (currentTDEE - currentIntake) * adherence
 
     // Apply weight change
     if (day > 0) {
@@ -200,11 +216,32 @@ export function projectWeight(
 
     points.push({
       date: projectionDate.toISOString().split('T')[0]!,
-      projected_weight: Math.round(currentWeight * 100) / 100
+      projected_weight: Math.round(currentWeight * 100) / 100,
+      tdee: Math.round(currentTDEE),
+      target_intake: Math.round(currentIntake)
     })
   }
 
   return points
+}
+
+/**
+ * Calculate recommended intake at a given weight to maintain a target deficit
+ */
+export function calculateAdaptiveIntake(
+  weight: number,
+  profile: UserProfile,
+  targetDeficit: number
+): number {
+  const tdee = calculateTDEE(
+    weight,
+    profile.height_cm,
+    calculateAge(profile.birth_date),
+    profile.biological_sex,
+    profile.activity_level,
+    profile.tdee_override
+  )
+  return Math.round(tdee - targetDeficit)
 }
 
 /**
@@ -341,6 +378,7 @@ export function estimateTimeToGoal(
 
 /**
  * Merge realistic, optimistic, and pessimistic projections
+ * Preserves TDEE from realistic projection
  */
 export function mergeProjections(
   realistic: ProjectionDataPoint[],
@@ -350,7 +388,8 @@ export function mergeProjections(
   return realistic.map((point, i) => ({
     ...point,
     optimistic_weight: optimistic[i]?.projected_weight,
-    pessimistic_weight: pessimistic[i]?.projected_weight
+    pessimistic_weight: pessimistic[i]?.projected_weight,
+    tdee: point.tdee // Preserve TDEE from realistic projection
   }))
 }
 

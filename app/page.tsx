@@ -66,6 +66,7 @@ import { SettingsModal } from '../components/SettingsModal'
 import { WeightProjectionChart } from '../components/Charts/WeightProjectionChart'
 import { ProjectionStats } from '../components/UI/ProjectionStats'
 import { ProjectionSettingsModal } from '../components/Modals/ProjectionSettingsModal'
+import { TDEEProjectionModal } from '../components/Modals/TDEEProjectionModal'
 import {
   calculateTDEE,
   calculateAge,
@@ -3995,6 +3996,7 @@ export default function KnarrDashboard() {
 
   // Projection settings modal state
   const [showProjectionSettingsModal, setShowProjectionSettingsModal] = useState(false)
+  const [showTDEEProjectionModal, setShowTDEEProjectionModal] = useState(false)
 
   // Dopamine Routine state
   const [activeRoutinePhase, setActiveRoutinePhase] = useState<RoutinePhase | 'all'>('all')
@@ -4288,10 +4290,14 @@ export default function KnarrDashboard() {
 
     const timeframeDays = getTimeframeDays(projectionSettings.timeframe)
 
+    // Use custom target intake if set, otherwise use actual average
+    const targetIntake = projectionSettings.target_intake ?? avgCalories
+    const adaptiveMode = projectionSettings.adaptive_mode ?? false
+
     // Generate projections with different adherence levels
-    const realistic = projectWeight(latestWeight.weight, tdee, avgCalories, timeframeDays, 1.0, userProfile)
-    const optimistic = projectWeight(latestWeight.weight, tdee, avgCalories, timeframeDays, 0.95, userProfile)
-    const pessimistic = projectWeight(latestWeight.weight, tdee, avgCalories, timeframeDays, 0.70, userProfile)
+    const realistic = projectWeight(latestWeight.weight, tdee, targetIntake, timeframeDays, 1.0, userProfile, adaptiveMode)
+    const optimistic = projectWeight(latestWeight.weight, tdee, targetIntake, timeframeDays, 0.95, userProfile, adaptiveMode)
+    const pessimistic = projectWeight(latestWeight.weight, tdee, targetIntake, timeframeDays, 0.70, userProfile, adaptiveMode)
 
     // Add milestone markers
     const withMilestones = addMilestones(latestWeight.weight, weightGoal, realistic)
@@ -4299,19 +4305,21 @@ export default function KnarrDashboard() {
     // Merge all projections into single array
     const merged = mergeProjections(withMilestones, optimistic, pessimistic)
 
-    // Calculate time to goal
-    const dailyDeficit = tdee - avgCalories
+    // Calculate time to goal based on target intake
+    const dailyDeficit = tdee - targetIntake
     const timeToGoal = estimateTimeToGoal(latestWeight.weight, weightGoal, dailyDeficit)
 
     return {
       projectionPoints: merged,
       tdee,
-      avgCalories,
+      avgCalories,      // Keep actual average for reference
+      targetIntake,     // The intake used for projection
       deficit: dailyDeficit,
       timeToGoal,
-      projectedEndWeight: merged[merged.length - 1]?.projected_weight ?? null
+      projectedEndWeight: merged[merged.length - 1]?.projected_weight ?? null,
+      adaptiveMode
     }
-  }, [latestWeight, calories, userProfile, projectionSettings.timeframe, weightGoal])
+  }, [latestWeight, calories, userProfile, projectionSettings.timeframe, projectionSettings.target_intake, projectionSettings.adaptive_mode, weightGoal])
 
   // Streak calculations - using new grace day recovery system
   const uniqueCalorieDatesSet = new Set(calories.map(c => c.date))
@@ -5747,9 +5755,12 @@ export default function KnarrDashboard() {
                 <p className="text-xs text-stone mt-1">7d avg: {rollingAverage ?? '--'} kg</p>
               </div>
 
-              {/* Energy Balance Card */}
+              {/* Energy Balance Card - Clickable to show TDEE projection */}
               {projectionData && (
-                <div className="glass-recessed rounded-xl p-3 sm:p-4">
+                <button
+                  onClick={() => setShowTDEEProjectionModal(true)}
+                  className="glass-recessed rounded-xl p-3 sm:p-4 text-left hover:bg-white/5 transition-all group"
+                >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[10px] text-stone uppercase">
                       {projectionData.deficit > 0 ? 'Deficit' : projectionData.deficit < 0 ? 'Surplus' : 'Balance'}
@@ -5765,8 +5776,10 @@ export default function KnarrDashboard() {
                   }`}>
                     {projectionData.deficit !== 0 ? (projectionData.deficit > 0 ? '-' : '+') + Math.abs(projectionData.deficit).toLocaleString() : '--'}
                   </p>
-                  <p className="text-xs text-stone mt-1">kcal/day vs TDEE</p>
-                </div>
+                  <p className="text-xs text-stone mt-1 group-hover:text-fog transition-colors">
+                    TDEE: {projectionData.tdee.toLocaleString()} kcal
+                  </p>
+                </button>
               )}
 
               {/* Habits Card with progress ring */}
@@ -5826,21 +5839,7 @@ export default function KnarrDashboard() {
             })}
           </div>
 
-          {/* Weight Chart - Full Width */}
-          {(activeViewTab === 'overview' || activeViewTab === 'health') && (
-            <div id="tutorial-charts" className="glass p-3 sm:p-4 mb-3 sm:mb-4 h-[240px] sm:h-[280px]">
-              <WeightChart weights={weights} goal={weightGoal} onLoadSample={loadSampleWeightData} onLogWeight={() => { setMode('log') }} />
-            </div>
-          )}
-
-          {/* Calorie Chart - Full Width */}
-          {(activeViewTab === 'overview' || activeViewTab === 'health') && (
-            <div className="glass p-3 sm:p-4 mb-3 sm:mb-4 h-[240px] sm:h-[280px]">
-              <CalorieChart calories={calories} goal={calorieGoal} onLoadSample={loadSampleCalorieData} />
-            </div>
-          )}
-
-          {/* Weight Projection Section */}
+          {/* Weight Projection Section - Health Tab Only */}
           {activeViewTab === 'health' && (
             <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
               <div className="flex items-center justify-between mb-3">
@@ -5869,10 +5868,80 @@ export default function KnarrDashboard() {
                     })}
                     onChangeTimeframe={(tf) => updateProjectionSettings({ timeframe: tf })}
                   />
+
+                  {/* Intake Adjustment Controls */}
+                  <div className="glass-recessed p-3 rounded-lg mt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Flame className="w-3.5 h-3.5 text-ember" />
+                        <span className="text-[10px] text-stone uppercase">Target Intake</span>
+                        {projectionSettings.target_intake && projectionSettings.target_intake !== projectionData.avgCalories && (
+                          <span className="text-[8px] bg-ember/30 text-ember px-1.5 py-0.5 rounded">Custom</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => updateProjectionSettings({
+                            adaptive_mode: !projectionSettings.adaptive_mode
+                          })}
+                          className={`flex items-center gap-1 px-2 py-1 text-[10px] rounded transition-all ${
+                            projectionSettings.adaptive_mode
+                              ? 'bg-moss/20 text-moss'
+                              : 'glass-recessed text-stone hover:text-fog'
+                          }`}
+                          title="Auto-reduce intake as weight drops to maintain consistent deficit"
+                        >
+                          <TrendingDown className="w-3 h-3" />
+                          <span className="hidden sm:inline">Adaptive</span>
+                        </button>
+                        {projectionSettings.target_intake && (
+                          <button
+                            onClick={() => updateProjectionSettings({ target_intake: null })}
+                            className="text-[10px] text-stone hover:text-fog transition-colors"
+                          >
+                            Reset
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min={1000}
+                        max={Math.max(3500, projectionData.tdee + 500)}
+                        step={50}
+                        value={projectionSettings.target_intake ?? projectionData.avgCalories}
+                        onChange={(e) => updateProjectionSettings({ target_intake: parseInt(e.target.value) })}
+                        className="flex-1 h-1.5 bg-iron-slate/50 rounded-full appearance-none cursor-pointer
+                          [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+                          [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-ember [&::-webkit-slider-thumb]:cursor-pointer
+                          [&::-webkit-slider-thumb]:shadow-lg"
+                      />
+                      <div className="text-right min-w-[80px]">
+                        <span className="font-mono text-lg text-bone">
+                          {(projectionSettings.target_intake ?? projectionData.avgCalories).toLocaleString()}
+                        </span>
+                        <span className="text-xs text-stone ml-1">kcal</span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between text-[10px] text-stone mt-2">
+                      <span>Actual avg: {projectionData.avgCalories.toLocaleString()} kcal</span>
+                      <span>TDEE: {projectionData.tdee.toLocaleString()} kcal</span>
+                    </div>
+
+                    {projectionSettings.adaptive_mode && (
+                      <div className="mt-3 p-2 bg-moss/10 rounded text-[10px] text-moss">
+                        <span className="font-medium">Adaptive mode:</span> Intake will auto-reduce as you lose weight to maintain a {Math.abs(projectionData.deficit).toLocaleString()} kcal/day {projectionData.deficit > 0 ? 'deficit' : 'surplus'}.
+                      </div>
+                    )}
+                  </div>
+
                   <div className="mt-4">
                     <ProjectionStats
                       tdee={projectionData.tdee}
-                      avgCalories={projectionData.avgCalories}
+                      avgCalories={projectionData.targetIntake}
                       deficit={projectionData.deficit}
                       timeToGoal={projectionData.timeToGoal}
                       projectedWeight={projectionData.projectedEndWeight}
@@ -5898,6 +5967,13 @@ export default function KnarrDashboard() {
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Calorie Chart - Full Width */}
+          {(activeViewTab === 'overview' || activeViewTab === 'health') && (
+            <div id="tutorial-charts" className="glass p-3 sm:p-4 mb-3 sm:mb-4 h-[240px] sm:h-[280px]">
+              <CalorieChart calories={calories} goal={calorieGoal} onLoadSample={loadSampleCalorieData} />
             </div>
           )}
 
@@ -6773,6 +6849,15 @@ export default function KnarrDashboard() {
         onSave={saveUserProfile}
         currentWeight={latestWeight?.weight}
       />
+      {projectionData && (
+        <TDEEProjectionModal
+          isOpen={showTDEEProjectionModal}
+          onClose={() => setShowTDEEProjectionModal(false)}
+          projectionData={projectionData.projectionPoints}
+          currentTDEE={projectionData.tdee}
+          hasProfile={!!userProfile}
+        />
+      )}
     </div>
   )
 }

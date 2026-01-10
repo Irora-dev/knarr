@@ -60,6 +60,10 @@ export function WeightProjectionChart({
       new Date(a.date).getTime() - new Date(b.date).getTime()
     )
 
+    // Get starting TDEE and intake from first projection point
+    const startingTDEE = projectionData[0]?.tdee ?? null
+    const startingIntake = projectionData[0]?.target_intake ?? null
+
     // Get last 14 days of historical data
     const historicalData = sortedWeights.slice(-14).map(w => ({
       date: w.date,
@@ -69,7 +73,9 @@ export function WeightProjectionChart({
       optimistic_weight: null as number | null,
       pessimistic_weight: null as number | null,
       is_milestone: false,
-      milestone_label: undefined as string | undefined
+      milestone_label: undefined as string | undefined,
+      tdee: startingTDEE, // Use starting TDEE for historical points
+      target_intake: startingIntake
     }))
 
     // Add projection data (skip first point as it overlaps with current)
@@ -81,7 +87,9 @@ export function WeightProjectionChart({
       optimistic_weight: p.optimistic_weight ?? null,
       pessimistic_weight: p.pessimistic_weight ?? null,
       is_milestone: p.is_milestone ?? false,
-      milestone_label: p.milestone_label
+      milestone_label: p.milestone_label,
+      tdee: p.tdee ?? null,
+      target_intake: p.target_intake ?? null
     }))
 
     // Bridge point: last historical becomes first projection

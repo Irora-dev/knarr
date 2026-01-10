@@ -200,6 +200,8 @@ export interface UserProfile {
 export interface ProjectionSettings {
   timeframe: ProjectionTimeframe
   show_confidence_bands: boolean
+  target_intake?: number | null  // Custom intake for "what if" scenarios
+  adaptive_mode?: boolean        // Auto-reduce intake to maintain deficit
 }
 
 export interface ProjectionDataPoint {
@@ -211,4 +213,6 @@ export interface ProjectionDataPoint {
   fat_mass_estimate?: number
   is_milestone?: boolean
   milestone_label?: string
+  tdee?: number
+  target_intake?: number  // Recommended intake at this point (for adaptive mode)
 }
