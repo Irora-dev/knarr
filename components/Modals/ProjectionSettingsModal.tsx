@@ -11,11 +11,20 @@ import {
   ACTIVITY_DESCRIPTIONS
 } from '../../lib/projectionUtils'
 
+interface ProfileData {
+  height_cm: number
+  birth_date: string
+  biological_sex: BiologicalSex
+  activity_level: ActivityLevel
+  training_days_per_week: number
+  tdee_override: number | null
+}
+
 interface ProjectionSettingsModalProps {
   isOpen: boolean
   onClose: () => void
   existingProfile: UserProfile | null
-  onSave: (profile: Omit<UserProfile, 'id' | 'created_at'>) => Promise<unknown>
+  onSave: (profile: ProfileData) => Promise<unknown>
   currentWeight: number | undefined
 }
 
@@ -106,8 +115,7 @@ export function ProjectionSettingsModal({
         biological_sex: biologicalSex,
         activity_level: activityLevel,
         training_days_per_week: trainingDays,
-        tdee_override: tdeeOverride ? parseInt(tdeeOverride) : null,
-        updated_at: new Date().toISOString()
+        tdee_override: tdeeOverride ? parseInt(tdeeOverride) : null
       })
       onClose()
     } catch (error) {

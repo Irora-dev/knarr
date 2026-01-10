@@ -12,8 +12,12 @@ import {
   Flame,
   CheckSquare,
   Anchor,
-  Sparkles
+  Sparkles,
+  Activity
 } from 'lucide-react'
+
+type BiologicalSex = 'male' | 'female'
+type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active'
 
 interface OnboardingData {
   name: string
@@ -22,6 +26,11 @@ interface OnboardingData {
   currentWeight: number | null
   calorieGoal: number | null
   initialHabits: string[]
+  // Profile data for TDEE
+  heightCm: number | null
+  birthDate: string | null
+  biologicalSex: BiologicalSex | null
+  activityLevel: ActivityLevel | null
 }
 
 interface OnboardingFlowProps {
@@ -46,6 +55,14 @@ const SUGGESTED_HABITS = [
   'Take vitamins',
 ]
 
+const ACTIVITY_OPTIONS: { value: ActivityLevel; label: string; description: string }[] = [
+  { value: 'sedentary', label: 'Sedentary', description: 'Little or no exercise, desk job' },
+  { value: 'light', label: 'Light', description: 'Light exercise 1-3 days/week' },
+  { value: 'moderate', label: 'Moderate', description: 'Moderate exercise 3-5 days/week' },
+  { value: 'active', label: 'Active', description: 'Hard exercise 6-7 days/week' },
+  { value: 'very_active', label: 'Very Active', description: 'Very hard exercise, physical job' },
+]
+
 export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [step, setStep] = useState(0)
   const [data, setData] = useState<OnboardingData>({
@@ -55,10 +72,17 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     currentWeight: null,
     calorieGoal: null,
     initialHabits: [],
+    heightCm: null,
+    birthDate: null,
+    biologicalSex: null,
+    activityLevel: null,
   })
   const [customHabit, setCustomHabit] = useState('')
+  const [showHeightImperial, setShowHeightImperial] = useState(false)
+  const [heightFeet, setHeightFeet] = useState('')
+  const [heightInches, setHeightInches] = useState('')
 
-  const totalSteps = 5
+  const totalSteps = 6 // Added profile step
 
   const updateData = (updates: Partial<OnboardingData>) => {
     setData(prev => ({ ...prev, ...updates }))
@@ -97,8 +121,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       case 0: return data.name.trim().length > 0
       case 1: return data.focusAreas.length > 0
       case 2: return true // Weight is optional
-      case 3: return true // Calories is optional
-      case 4: return true // Habits are optional
+      case 3: return true // Profile is optional
+      case 4: return true // Calories is optional
+      case 5: return true // Habits are optional
       default: return true
     }
   }
@@ -256,6 +281,149 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             className="space-y-6"
           >
             <div className="text-center">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 rounded-full bg-fjord-blue/20 flex items-center justify-center">
+                <Activity className="w-7 h-7 sm:w-8 sm:h-8 text-fjord-blue" />
+              </div>
+              <h2 className="font-display text-xl sm:text-2xl text-bone mb-2">Your Profile</h2>
+              <p className="text-fog text-sm sm:text-base">Optional: For accurate calorie projections</p>
+            </div>
+
+            <div className="space-y-4">
+              {/* Height */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs text-stone uppercase tracking-wider">Height</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowHeightImperial(!showHeightImperial)}
+                    className="text-[10px] text-fjord-blue hover:text-bone transition-colors"
+                  >
+                    {showHeightImperial ? 'Use cm' : 'Use ft/in'}
+                  </button>
+                </div>
+                {showHeightImperial ? (
+                  <div className="flex gap-2">
+                    <div className="flex-1 flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={heightFeet}
+                        onChange={(e) => {
+                          setHeightFeet(e.target.value)
+                          const totalInches = (parseInt(e.target.value) || 0) * 12 + (parseInt(heightInches) || 0)
+                          updateData({ heightCm: Math.round(totalInches * 2.54) || null })
+                        }}
+                        placeholder="5"
+                        className="input flex-1"
+                        min="3"
+                        max="8"
+                      />
+                      <span className="text-fog text-sm">ft</span>
+                    </div>
+                    <div className="flex-1 flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={heightInches}
+                        onChange={(e) => {
+                          setHeightInches(e.target.value)
+                          const totalInches = (parseInt(heightFeet) || 0) * 12 + (parseInt(e.target.value) || 0)
+                          updateData({ heightCm: Math.round(totalInches * 2.54) || null })
+                        }}
+                        placeholder="10"
+                        className="input flex-1"
+                        min="0"
+                        max="11"
+                      />
+                      <span className="text-fog text-sm">in</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={data.heightCm || ''}
+                      onChange={(e) => updateData({ heightCm: e.target.value ? parseInt(e.target.value) : null })}
+                      placeholder="175"
+                      className="input flex-1"
+                      min="100"
+                      max="250"
+                    />
+                    <span className="text-fog text-sm">cm</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Birth Date */}
+              <div>
+                <label className="block text-xs text-stone uppercase tracking-wider mb-2">Birth Date</label>
+                <input
+                  type="date"
+                  value={data.birthDate || ''}
+                  onChange={(e) => updateData({ birthDate: e.target.value || null })}
+                  className="input w-full"
+                  max={new Date().toISOString().split('T')[0]}
+                />
+              </div>
+
+              {/* Biological Sex */}
+              <div>
+                <label className="block text-xs text-stone uppercase tracking-wider mb-2">Biological Sex</label>
+                <div className="flex gap-2">
+                  {(['male', 'female'] as BiologicalSex[]).map((sex) => (
+                    <button
+                      key={sex}
+                      type="button"
+                      onClick={() => updateData({ biologicalSex: sex })}
+                      className={`flex-1 px-4 py-2 rounded-lg text-sm transition-all capitalize ${
+                        data.biologicalSex === sex
+                          ? 'bg-fjord-blue text-bone'
+                          : 'bg-iron-slate/30 border border-iron-slate/50 text-fog hover:bg-iron-slate/50'
+                      }`}
+                    >
+                      {sex}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Activity Level */}
+              <div>
+                <label className="block text-xs text-stone uppercase tracking-wider mb-2">Activity Level</label>
+                <div className="space-y-2">
+                  {ACTIVITY_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => updateData({ activityLevel: option.value })}
+                      className={`w-full p-3 rounded-lg text-left transition-all ${
+                        data.activityLevel === option.value
+                          ? 'bg-fjord-blue/20 border border-fjord-blue/50'
+                          : 'bg-iron-slate/30 border border-iron-slate/50 hover:bg-iron-slate/50'
+                      }`}
+                    >
+                      <p className={`font-medium text-sm ${data.activityLevel === option.value ? 'text-bone' : 'text-fog'}`}>
+                        {option.label}
+                      </p>
+                      <p className="text-xs text-stone">{option.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <p className="text-center text-stone text-xs">This helps calculate your daily energy expenditure</p>
+          </motion.div>
+        )
+
+      case 4:
+        return (
+          <motion.div
+            key="step-4"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="space-y-6"
+          >
+            <div className="text-center">
               <div className="w-14 h-14 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 rounded-full bg-ember/20 flex items-center justify-center">
                 <Flame className="w-7 h-7 sm:w-8 sm:h-8 text-ember" />
               </div>
@@ -283,10 +451,10 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           </motion.div>
         )
 
-      case 4:
+      case 5:
         return (
           <motion.div
-            key="step-4"
+            key="step-5"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}

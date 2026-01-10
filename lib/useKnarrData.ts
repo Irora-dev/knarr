@@ -864,17 +864,44 @@ export function useKnarrData() {
   }, [userId])
 
   // User profile operations for TDEE/projection calculations
-  const saveUserProfile = useCallback(async (profileData: Omit<UserProfile, 'id' | 'created_at'>) => {
+  const saveUserProfile = useCallback(async (profileData: {
+    height_cm: number
+    birth_date: string
+    biological_sex: 'male' | 'female'
+    activity_level: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active'
+    training_days_per_week: number
+    tdee_override: number | null
+  }) => {
     const now = new Date().toISOString()
 
-    if (userProfile) {
+    // Check for existing profile first
+    const existingProfiles = await userProfileOps.getAll(userId)
+    const existingProfile = existingProfiles.length > 0 ? existingProfiles[0] : null
+
+    if (existingProfile) {
       // Update existing profile
-      const updated = await userProfileOps.update(userProfile.id, {
-        ...profileData,
+      const updated = await userProfileOps.update(existingProfile.id, {
+        height_cm: profileData.height_cm,
+        birth_date: profileData.birth_date,
+        biological_sex: profileData.biological_sex,
+        activity_level: profileData.activity_level,
+        training_days_per_week: profileData.training_days_per_week,
+        tdee_override: profileData.tdee_override,
         updated_at: now
       })
-      setUserProfileState(updated as unknown as UserProfile)
-      return updated
+      const fullProfile: UserProfile = {
+        id: existingProfile.id,
+        height_cm: profileData.height_cm,
+        birth_date: profileData.birth_date,
+        biological_sex: profileData.biological_sex,
+        activity_level: profileData.activity_level,
+        training_days_per_week: profileData.training_days_per_week,
+        tdee_override: profileData.tdee_override,
+        created_at: (existingProfile as unknown as UserProfile).created_at || now,
+        updated_at: now
+      }
+      setUserProfileState(fullProfile)
+      return fullProfile
     } else {
       // Create new profile
       const created = await userProfileOps.create(userId, {
@@ -887,10 +914,21 @@ export function useKnarrData() {
         updated_at: now,
         created_at: now
       })
-      setUserProfileState(created as unknown as UserProfile)
-      return created
+      const fullProfile: UserProfile = {
+        id: created.id,
+        height_cm: profileData.height_cm,
+        birth_date: profileData.birth_date,
+        biological_sex: profileData.biological_sex,
+        activity_level: profileData.activity_level,
+        training_days_per_week: profileData.training_days_per_week,
+        tdee_override: profileData.tdee_override,
+        created_at: now,
+        updated_at: now
+      }
+      setUserProfileState(fullProfile)
+      return fullProfile
     }
-  }, [userId, userProfile])
+  }, [userId])
 
   const updateProjectionSettings = useCallback((settings: Partial<ProjectionSettings>) => {
     setProjectionSettingsState(prev => ({ ...prev, ...settings }))

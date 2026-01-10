@@ -4655,6 +4655,11 @@ export default function KnarrDashboard() {
     currentWeight: number | null
     calorieGoal: number | null
     initialHabits: string[]
+    // Profile data for TDEE
+    heightCm: number | null
+    birthDate: string | null
+    biologicalSex: 'male' | 'female' | null
+    activityLevel: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active' | null
   }) => {
     // Save user name (hook method handles storage)
     setUserName(data.name)
@@ -4677,6 +4682,18 @@ export default function KnarrDashboard() {
     // Create initial habits
     if (data.initialHabits.length > 0) {
       data.initialHabits.forEach(name => addHabit(name))
+    }
+
+    // Save user profile for TDEE calculation if provided
+    if (data.heightCm && data.birthDate && data.biologicalSex && data.activityLevel) {
+      saveUserProfile({
+        height_cm: data.heightCm,
+        birth_date: data.birthDate,
+        biological_sex: data.biologicalSex,
+        activity_level: data.activityLevel,
+        training_days_per_week: 3, // Default to 3 days
+        tdee_override: null
+      })
     }
 
     // Mark onboarding as complete and start tutorial
@@ -5681,7 +5698,7 @@ export default function KnarrDashboard() {
               <CompassIcon className="w-3.5 h-3.5 text-ember" />
               Stats at a Glance
             </h2>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
               {/* Streak Card */}
               <div className="glass-recessed rounded-xl p-3 sm:p-4">
                 <div className="flex items-center justify-between mb-2">
@@ -5729,6 +5746,28 @@ export default function KnarrDashboard() {
                 </div>
                 <p className="text-xs text-stone mt-1">7d avg: {rollingAverage ?? '--'} kg</p>
               </div>
+
+              {/* Energy Balance Card */}
+              {projectionData && (
+                <div className="glass-recessed rounded-xl p-3 sm:p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] text-stone uppercase">
+                      {projectionData.deficit > 0 ? 'Deficit' : projectionData.deficit < 0 ? 'Surplus' : 'Balance'}
+                    </span>
+                    {projectionData.deficit > 0 ? (
+                      <TrendingDown className="w-3.5 h-3.5 text-moss" />
+                    ) : (
+                      <TrendingUp className="w-3.5 h-3.5 text-amber-400" />
+                    )}
+                  </div>
+                  <p className={`font-mono text-2xl sm:text-3xl font-semibold ${
+                    projectionData.deficit > 0 ? 'text-moss' : projectionData.deficit < 0 ? 'text-amber-400' : 'text-bone'
+                  }`}>
+                    {projectionData.deficit !== 0 ? (projectionData.deficit > 0 ? '-' : '+') + Math.abs(projectionData.deficit).toLocaleString() : '--'}
+                  </p>
+                  <p className="text-xs text-stone mt-1">kcal/day vs TDEE</p>
+                </div>
+              )}
 
               {/* Habits Card with progress ring */}
               <div className="glass-recessed rounded-xl p-3 sm:p-4">
