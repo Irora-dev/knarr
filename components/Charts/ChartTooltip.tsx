@@ -31,9 +31,12 @@ export function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
   // Get TDEE and target intake from the data point payload (available on projection points)
   const tdeeValue = validEntries[0]?.payload?.tdee as number | undefined
   const targetIntakeValue = validEntries[0]?.payload?.target_intake as number | undefined
+  const leanMassEstimate = validEntries[0]?.payload?.lean_mass_estimate as number | undefined
+  const fatMassEstimate = validEntries[0]?.payload?.fat_mass_estimate as number | undefined
 
   // Check if this is projection data
   const isProjectionData = historicalWeight || projectedWeight || optimisticWeight || pessimisticWeight
+  const hasBodyComposition = leanMassEstimate !== undefined && fatMassEstimate !== undefined
 
   return (
     <div className="chart-tooltip">
@@ -58,7 +61,7 @@ export function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
               Range: {pessimisticWeight.value?.toFixed(1)} - {optimisticWeight.value?.toFixed(1)} kg
             </p>
           )}
-          {!historicalWeight && (tdeeValue || targetIntakeValue) && (
+          {!historicalWeight && (tdeeValue || targetIntakeValue || hasBodyComposition) && (
             <div className="mt-1 pt-1 border-t border-white/10">
               {tdeeValue && (
                 <p className="font-mono text-xs text-ember">
@@ -69,6 +72,16 @@ export function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
                 <p className="font-mono text-xs text-moss">
                   Target: {targetIntakeValue.toLocaleString()} kcal
                 </p>
+              )}
+              {hasBodyComposition && (
+                <div className="mt-1 pt-1 border-t border-white/10">
+                  <p className="font-mono text-xs text-fjord">
+                    +{leanMassEstimate?.toFixed(2)} kg lean
+                  </p>
+                  <p className="font-mono text-xs text-stone">
+                    +{fatMassEstimate?.toFixed(2)} kg fat
+                  </p>
+                </div>
               )}
             </div>
           )}

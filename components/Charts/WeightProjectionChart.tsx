@@ -89,7 +89,9 @@ export function WeightProjectionChart({
       is_milestone: p.is_milestone ?? false,
       milestone_label: p.milestone_label,
       tdee: p.tdee ?? null,
-      target_intake: p.target_intake ?? null
+      target_intake: p.target_intake ?? null,
+      lean_mass_estimate: p.lean_mass_estimate ?? null,
+      fat_mass_estimate: p.fat_mass_estimate ?? null
     }))
 
     // Bridge point: last historical becomes first projection

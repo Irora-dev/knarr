@@ -160,6 +160,7 @@ function addDays(date: Date, days: number): Date {
  * Project weight over time based on calorie deficit/surplus
  * Recalculates TDEE weekly as weight changes
  * Includes TDEE at each point for visualization
+ * For surplus scenarios, estimates lean vs fat mass gain
  *
  * @param adaptiveMode - If true, maintains consistent deficit by reducing intake as TDEE drops
  * @param targetDeficit - The daily deficit to maintain in adaptive mode (default: calculated from initial values)
@@ -182,6 +183,14 @@ export function projectWeight(
   // Calculate initial deficit to maintain in adaptive mode
   const initialDeficit = targetDeficit ?? (baseTDEE - avgDailyCalories)
   let currentIntake = avgDailyCalories
+
+  // Track cumulative body composition changes (for surplus scenarios)
+  let cumulativeLeanGain = 0
+  let cumulativeFatGain = 0
+
+  // Determine if this is a surplus scenario
+  const isSurplus = avgDailyCalories > baseTDEE
+  const trainingDays = profile?.training_days_per_week ?? 3 // Default to 3 training days
 
   for (let day = 0; day <= days; day++) {
     // Recalculate TDEE weekly as weight changes
@@ -212,20 +221,61 @@ export function projectWeight(
     // Adherence affects how well person sticks to their calorie goal
     const effectiveDeficit = (currentTDEE - currentIntake) * adherence
 
-    // Apply weight change
+    // Apply weight change and track body composition for surplus
     if (day > 0) {
-      // Weight change = deficit calories / calories per kg
-      currentWeight -= effectiveDeficit / CALORIES_PER_KG_FAT
+      if (isSurplus && effectiveDeficit < 0) {
+        // In surplus: calculate lean vs fat gain using body composition estimation
+        const dailySurplus = Math.abs(effectiveDeficit)
+        const weeksElapsed = day / 7
+
+        // Use the estimateLeanMassGain formula logic inline for daily calculation
+        // Optimal surplus for muscle building: ~300-500 cal/day
+        const optimalSurplus = 400
+        const trainingFactor = Math.min(trainingDays / 5, 1)
+        const maxDailyLeanGain = (0.2 * trainingFactor) / 7 // Max weekly lean gain / 7 for daily
+
+        // Lean ratio decreases as surplus increases beyond optimal
+        let leanRatio: number
+        if (dailySurplus <= optimalSurplus) {
+          // Up to optimal: high lean ratio (up to 70%)
+          leanRatio = 0.7
+        } else {
+          // Above optimal: diminishing returns
+          leanRatio = 0.7 - (dailySurplus - optimalSurplus) / 1500
+          leanRatio = Math.max(0.2, leanRatio) // Minimum 20% lean
+        }
+
+        // Calculate daily gains
+        const totalDailyGain = dailySurplus / CALORIES_PER_KG_FAT
+        const potentialLeanGain = totalDailyGain * leanRatio
+        const actualLeanGain = Math.min(potentialLeanGain, maxDailyLeanGain)
+        const fatGain = totalDailyGain - actualLeanGain
+
+        cumulativeLeanGain += actualLeanGain
+        cumulativeFatGain += fatGain
+        currentWeight += totalDailyGain
+      } else {
+        // In deficit: assume mostly fat loss
+        currentWeight -= effectiveDeficit / CALORIES_PER_KG_FAT
+      }
     }
 
     const projectionDate = addDays(today, day)
 
-    points.push({
+    const dataPoint: ProjectionDataPoint = {
       date: projectionDate.toISOString().split('T')[0]!,
       projected_weight: Math.round(currentWeight * 100) / 100,
       tdee: Math.round(currentTDEE),
       target_intake: Math.round(currentIntake)
-    })
+    }
+
+    // Add body composition estimates for surplus scenarios
+    if (isSurplus && day > 0) {
+      dataPoint.lean_mass_estimate = Math.round(cumulativeLeanGain * 100) / 100
+      dataPoint.fat_mass_estimate = Math.round(cumulativeFatGain * 100) / 100
+    }
+
+    points.push(dataPoint)
   }
 
   return points
@@ -384,7 +434,7 @@ export function estimateTimeToGoal(
 
 /**
  * Merge realistic, optimistic, and pessimistic projections
- * Preserves TDEE from realistic projection
+ * Preserves TDEE and body composition from realistic projection
  */
 export function mergeProjections(
   realistic: ProjectionDataPoint[],
@@ -395,7 +445,9 @@ export function mergeProjections(
     ...point,
     optimistic_weight: optimistic[i]?.projected_weight,
     pessimistic_weight: pessimistic[i]?.projected_weight,
-    tdee: point.tdee // Preserve TDEE from realistic projection
+    tdee: point.tdee, // Preserve TDEE from realistic projection
+    lean_mass_estimate: point.lean_mass_estimate, // Preserve body composition
+    fat_mass_estimate: point.fat_mass_estimate
   }))
 }
 
