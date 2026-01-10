@@ -79,11 +79,10 @@ export interface MessageBottle {
 
 export interface Waypoint {
   id: string
-  user_id: string
   title: string
   description?: string
-  direction: 'nutrition' | 'habits' | 'general'
-  achieved_at: string
+  achieved_date: string
+  goal_id?: string // Optional link to a life goal
   created_at: string
 }
 
@@ -110,4 +109,106 @@ export interface DirectionSummary {
     today_total: number
     steady_course: number
   }
+}
+
+// Message interface (simplified from MessageBottle for dashboard)
+export interface Message {
+  id: string
+  content: string
+  created_at: string
+  deliver_at: string
+  read: boolean
+  mood?: 'hopeful' | 'grateful' | 'determined' | 'reflective'
+}
+
+// Bearing (Weekly/Monthly reflection)
+export interface Bearing {
+  id: string
+  type: 'weekly' | 'monthly'
+  period_start: string // Start of the week/month
+  period_end: string   // End of the week/month
+  wins: string[]       // What went well
+  challenges: string[] // What was difficult
+  lessons: string      // What you learned
+  focus: string        // Focus for next period
+  created_at: string
+}
+
+// Life Goal (True North)
+export type LifeGoalCategory = 'health' | 'career' | 'relationships' | 'growth' | 'financial' | 'other'
+
+export interface LifeGoal {
+  id: string
+  category: LifeGoalCategory
+  title: string
+  description: string
+  why: string // Why this matters
+  target_date?: string
+  progress: number // 0-100
+  created_at: string
+}
+
+// Finance Account
+export type FinanceAccountType = 'cash' | 'checking' | 'savings' | 'investment' | 'crypto' | 'property' | 'debt' | 'other'
+
+export interface FinanceAccount {
+  id: string
+  name: string
+  type: FinanceAccountType
+  balance: number
+  currency: string
+  institution?: string
+  notes?: string
+  is_asset: boolean
+  last_updated: string
+  created_at: string
+}
+
+// Net Worth Snapshot
+export interface NetWorthSnapshot {
+  id: string
+  date: string
+  total_assets: number
+  total_liabilities: number
+  net_worth: number
+  breakdown: {
+    account_id: string
+    name: string
+    type: string
+    balance: number
+  }[]
+  created_at: string
+}
+
+// Weight Projection Types
+export type BiologicalSex = 'male' | 'female'
+export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active'
+export type ProjectionTimeframe = '4w' | '8w' | '12w' | '6m' | '1y'
+
+export interface UserProfile {
+  id: string
+  height_cm: number
+  birth_date: string         // YYYY-MM-DD
+  biological_sex: BiologicalSex
+  activity_level: ActivityLevel
+  training_days_per_week: number  // 0-7
+  tdee_override: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ProjectionSettings {
+  timeframe: ProjectionTimeframe
+  show_confidence_bands: boolean
+}
+
+export interface ProjectionDataPoint {
+  date: string
+  projected_weight: number
+  optimistic_weight?: number
+  pessimistic_weight?: number
+  lean_mass_estimate?: number
+  fat_mass_estimate?: number
+  is_milestone?: boolean
+  milestone_label?: string
 }

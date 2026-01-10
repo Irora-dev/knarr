@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Compass as CompassIcon,
@@ -63,6 +63,21 @@ import { AuthScreen } from '../components/AuthScreen'
 import { OnboardingFlow } from '../components/OnboardingFlow'
 import { Tutorial, TutorialStep } from '../components/Tutorial'
 import { SettingsModal } from '../components/SettingsModal'
+import { WeightProjectionChart } from '../components/Charts/WeightProjectionChart'
+import { ProjectionStats } from '../components/UI/ProjectionStats'
+import { ProjectionSettingsModal } from '../components/Modals/ProjectionSettingsModal'
+import {
+  calculateTDEE,
+  calculateAge,
+  calculateAverageCalories,
+  getLatestWeight,
+  projectWeight,
+  getTimeframeDays,
+  estimateTimeToGoal,
+  estimateBasicTDEE,
+  addMilestones,
+  mergeProjections
+} from '../lib/projectionUtils'
 import {
   LineChart,
   Line,
@@ -2122,20 +2137,27 @@ function BearingNotificationPopup({
   isOpen,
   onClose,
   onFillOut,
+  type,
   periodStart,
   periodEnd
 }: {
   isOpen: boolean
   onClose: () => void
   onFillOut: () => void
+  type: 'weekly' | 'monthly'
   periodStart: string
   periodEnd: string
 }) {
   const formatPeriodDisplay = () => {
     const start = new Date(periodStart + 'T00:00:00')
     const end = new Date(periodEnd + 'T00:00:00')
+    if (type === 'monthly') {
+      return start.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+    }
     return `${start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${end.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
   }
+
+  const isMonthly = type === 'monthly'
 
   return (
     <AnimatePresence>
@@ -2170,20 +2192,24 @@ function BearingNotificationPopup({
 
             <div className="glass-modal p-6 rounded-2xl text-center">
               <div className="flex items-center justify-center gap-2 mb-2">
-                <span className="text-2xl">🧭</span>
-                <h2 className="font-display text-xl text-bone">Time to Reflect</h2>
+                <span className="text-2xl">{isMonthly ? '📅' : '🧭'}</span>
+                <h2 className="font-display text-xl text-bone">
+                  {isMonthly ? 'Monthly Review' : 'Time to Reflect'}
+                </h2>
               </div>
 
               <p className="text-sm text-stone mb-2">
-                Your weekly bearing is due
+                Your {isMonthly ? 'monthly' : 'weekly'} bearing is due
               </p>
 
-              <div className="glass-recessed px-3 py-2 rounded-lg mb-4 inline-block">
-                <span className="text-xs text-fjord font-medium">{formatPeriodDisplay()}</span>
+              <div className={`glass-recessed px-3 py-2 rounded-lg mb-4 inline-block ${isMonthly ? 'border border-ember/20' : ''}`}>
+                <span className={`text-xs font-medium ${isMonthly ? 'text-ember' : 'text-fjord'}`}>{formatPeriodDisplay()}</span>
               </div>
 
               <p className="text-fog text-sm mb-6 leading-relaxed">
-                Take a moment to reflect on your wins, challenges, and lessons from this week.
+                {isMonthly
+                  ? 'Take a moment to reflect on the bigger picture - your wins, challenges, and lessons from this month.'
+                  : 'Take a moment to reflect on your wins, challenges, and lessons from this week.'}
               </p>
 
               <div className="flex flex-col gap-2">
@@ -3938,6 +3964,11 @@ export default function KnarrDashboard() {
     addFinanceTransaction,
     deleteFinanceTransaction,
     takeNetWorthSnapshot,
+    // User profile for TDEE/projections
+    userProfile,
+    projectionSettings,
+    saveUserProfile,
+    updateProjectionSettings,
   } = useKnarrData()
 
   const [mounted, setMounted] = useState(false)
@@ -3961,6 +3992,9 @@ export default function KnarrDashboard() {
   const [showAddAccountModal, setShowAddAccountModal] = useState(false)
   const [editingAccount, setEditingAccount] = useState<FinanceAccount | null>(null)
   const [financeSetupKey, setFinanceSetupKey] = useState('')
+
+  // Projection settings modal state
+  const [showProjectionSettingsModal, setShowProjectionSettingsModal] = useState(false)
 
   // Dopamine Routine state
   const [activeRoutinePhase, setActiveRoutinePhase] = useState<RoutinePhase | 'all'>('all')
@@ -3989,6 +4023,8 @@ export default function KnarrDashboard() {
   // Bearing notification state
   const [showBearingNotification, setShowBearingNotification] = useState(false)
   const [bearingNotificationDismissed, setBearingNotificationDismissed] = useState(false)
+  const [bearingNotificationType, setBearingNotificationType] = useState<'weekly' | 'monthly'>('weekly')
+  const [monthlyBearingNotificationDismissed, setMonthlyBearingNotificationDismissed] = useState(false)
 
   // Inline edit state for header stats
   const [editingStat, setEditingStat] = useState<'calories' | 'weight' | 'heading' | null>(null)
@@ -4221,6 +4257,62 @@ export default function KnarrDashboard() {
     ? getProgressToGoal(rollingAverage, weightGoal)
     : null
 
+  // Weight projection calculations
+  const projectionData = useMemo(() => {
+    if (!latestWeight) return null
+
+    // Calculate average calories from last 14 days
+    const avgCalories = calculateAverageCalories(
+      calories.map(c => ({ date: c.date, calories: c.calories })),
+      14
+    )
+
+    // If no recent calorie data, can't project
+    if (!avgCalories) return null
+
+    // Calculate TDEE
+    let tdee: number
+    if (userProfile) {
+      tdee = calculateTDEE(
+        latestWeight.weight,
+        userProfile.height_cm,
+        calculateAge(userProfile.birth_date),
+        userProfile.biological_sex,
+        userProfile.activity_level,
+        userProfile.tdee_override
+      )
+    } else {
+      // Fallback to basic estimate
+      tdee = estimateBasicTDEE(latestWeight.weight)
+    }
+
+    const timeframeDays = getTimeframeDays(projectionSettings.timeframe)
+
+    // Generate projections with different adherence levels
+    const realistic = projectWeight(latestWeight.weight, tdee, avgCalories, timeframeDays, 1.0, userProfile)
+    const optimistic = projectWeight(latestWeight.weight, tdee, avgCalories, timeframeDays, 0.95, userProfile)
+    const pessimistic = projectWeight(latestWeight.weight, tdee, avgCalories, timeframeDays, 0.70, userProfile)
+
+    // Add milestone markers
+    const withMilestones = addMilestones(latestWeight.weight, weightGoal, realistic)
+
+    // Merge all projections into single array
+    const merged = mergeProjections(withMilestones, optimistic, pessimistic)
+
+    // Calculate time to goal
+    const dailyDeficit = tdee - avgCalories
+    const timeToGoal = estimateTimeToGoal(latestWeight.weight, weightGoal, dailyDeficit)
+
+    return {
+      projectionPoints: merged,
+      tdee,
+      avgCalories,
+      deficit: dailyDeficit,
+      timeToGoal,
+      projectedEndWeight: merged[merged.length - 1]?.projected_weight ?? null
+    }
+  }, [latestWeight, calories, userProfile, projectionSettings.timeframe, weightGoal])
+
   // Streak calculations - using new grace day recovery system
   const uniqueCalorieDatesSet = new Set(calories.map(c => c.date))
   const streakResult = calculateStreakWithGrace(uniqueCalorieDatesSet)
@@ -4252,11 +4344,21 @@ export default function KnarrDashboard() {
   // Show notification if: it's Sunday OR we're past Monday in current week, AND no bearing exists
   const needsWeeklyBearing = !currentWeekBearing
 
-  // Check for bearing notification on mount and when week changes
+  // Monthly bearing notification logic
+  // Show notification if: last 3 days of month OR first login after month ended, AND no bearing exists
+  const needsMonthlyBearing = !currentMonthBearing
+  const currentDate = new Date()
+  const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()
+  const daysUntilMonthEnd = lastDayOfMonth - currentDate.getDate()
+  const isLastDaysOfMonth = daysUntilMonthEnd <= 3
+
+  // Check for weekly bearing notification on mount and when week changes
   useEffect(() => {
     if (!needsWeeklyBearing) {
-      // Bearing already completed, hide notification
-      setShowBearingNotification(false)
+      // Bearing already completed, hide notification if it was for weekly
+      if (bearingNotificationType === 'weekly') {
+        setShowBearingNotification(false)
+      }
       return
     }
 
@@ -4265,15 +4367,39 @@ export default function KnarrDashboard() {
     const wasDismissed = localStorage.getItem(dismissedKey) === 'true'
     setBearingNotificationDismissed(wasDismissed)
 
-    // Show popup if not dismissed
-    if (!wasDismissed) {
+    // Show popup if not dismissed (and not showing monthly)
+    if (!wasDismissed && !showBearingNotification) {
       // Small delay to let the app load first
       const timer = setTimeout(() => {
+        setBearingNotificationType('weekly')
         setShowBearingNotification(true)
       }, 1500)
       return () => clearTimeout(timer)
     }
   }, [currentWeekBounds.start, needsWeeklyBearing])
+
+  // Check for monthly bearing notification
+  useEffect(() => {
+    if (!needsMonthlyBearing || !isLastDaysOfMonth) {
+      // Monthly bearing already completed or not in last 3 days
+      return
+    }
+
+    // Check localStorage for dismissed state for current month
+    const dismissedKey = `monthly_bearing_dismissed_${currentMonthBounds.start}`
+    const wasDismissed = localStorage.getItem(dismissedKey) === 'true'
+    setMonthlyBearingNotificationDismissed(wasDismissed)
+
+    // Show popup if not dismissed and weekly isn't showing
+    // Monthly takes priority over weekly in last 3 days
+    if (!wasDismissed) {
+      const timer = setTimeout(() => {
+        setBearingNotificationType('monthly')
+        setShowBearingNotification(true)
+      }, 2000) // Slightly longer delay for monthly
+      return () => clearTimeout(timer)
+    }
+  }, [currentMonthBounds.start, needsMonthlyBearing, isLastDaysOfMonth])
 
   // Handlers - now use hook methods
   const handleLogCalories = (value: string, date: string) => {
@@ -4471,15 +4597,21 @@ export default function KnarrDashboard() {
 
   // Bearing notification handlers
   const handleDismissBearingNotification = () => {
-    const dismissedKey = `bearing_dismissed_${currentWeekBounds.start}`
-    localStorage.setItem(dismissedKey, 'true')
-    setBearingNotificationDismissed(true)
+    if (bearingNotificationType === 'monthly') {
+      const dismissedKey = `monthly_bearing_dismissed_${currentMonthBounds.start}`
+      localStorage.setItem(dismissedKey, 'true')
+      setMonthlyBearingNotificationDismissed(true)
+    } else {
+      const dismissedKey = `bearing_dismissed_${currentWeekBounds.start}`
+      localStorage.setItem(dismissedKey, 'true')
+      setBearingNotificationDismissed(true)
+    }
     setShowBearingNotification(false)
   }
 
   const handleFillOutBearing = () => {
     setShowBearingNotification(false)
-    setBearingType('weekly')
+    setBearingType(bearingNotificationType)
     setShowBearingModal(true)
   }
 
@@ -4707,6 +4839,16 @@ export default function KnarrDashboard() {
                     title="Weekly bearing due"
                   >
                     <CompassIcon className="w-4 h-4" />
+                    <NotificationDot />
+                  </button>
+                )}
+                {needsMonthlyBearing && isLastDaysOfMonth && (
+                  <button
+                    onClick={() => { setBearingType('monthly'); setShowBearingModal(true) }}
+                    className="relative p-2 rounded-lg glass-recessed text-fjord hover:bg-fjord/10 transition-colors"
+                    title="Monthly bearing due"
+                  >
+                    <Calendar className="w-4 h-4" />
                     <NotificationDot />
                   </button>
                 )}
@@ -5626,7 +5768,7 @@ export default function KnarrDashboard() {
             {VIEW_TABS.map((tab) => {
               const TabIcon = tab.icon
               const isActive = activeViewTab === tab.id
-              const showNotificationDot = tab.id === 'reflect' && needsWeeklyBearing
+              const showNotificationDot = tab.id === 'reflect' && (needsWeeklyBearing || (needsMonthlyBearing && isLastDaysOfMonth))
               return (
                 <button
                   key={tab.id}
@@ -5656,6 +5798,67 @@ export default function KnarrDashboard() {
           {(activeViewTab === 'overview' || activeViewTab === 'health') && (
             <div className="glass p-3 sm:p-4 mb-3 sm:mb-4 h-[240px] sm:h-[280px]">
               <CalorieChart calories={calories} goal={calorieGoal} onLoadSample={loadSampleCalorieData} />
+            </div>
+          )}
+
+          {/* Weight Projection Section */}
+          {activeViewTab === 'health' && (
+            <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-fjord" />
+                  <span className="text-caption text-stone uppercase">Weight Projection</span>
+                </div>
+                <button
+                  onClick={() => setShowProjectionSettingsModal(true)}
+                  className="text-xs text-fjord hover:text-bone transition-colors"
+                >
+                  {userProfile ? 'Edit Profile' : 'Set Up Profile'}
+                </button>
+              </div>
+
+              {projectionData ? (
+                <>
+                  <WeightProjectionChart
+                    weights={weights}
+                    projectionData={projectionData.projectionPoints}
+                    goalWeight={weightGoal}
+                    showConfidenceBands={projectionSettings.show_confidence_bands}
+                    timeframe={projectionSettings.timeframe}
+                    onToggleBands={() => updateProjectionSettings({
+                      show_confidence_bands: !projectionSettings.show_confidence_bands
+                    })}
+                    onChangeTimeframe={(tf) => updateProjectionSettings({ timeframe: tf })}
+                  />
+                  <div className="mt-4">
+                    <ProjectionStats
+                      tdee={projectionData.tdee}
+                      avgCalories={projectionData.avgCalories}
+                      deficit={projectionData.deficit}
+                      timeToGoal={projectionData.timeToGoal}
+                      projectedWeight={projectionData.projectedEndWeight}
+                      hasProfile={!!userProfile}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <TrendingUp className="w-8 h-8 text-stone mb-3 mx-auto opacity-50" />
+                  <p className="text-fog text-sm mb-2">
+                    {!latestWeight ? 'Log your weight to see projections' :
+                     calories.length === 0 ? 'Log some calories to see projections' :
+                     'Unable to generate projection'}
+                  </p>
+                  {!userProfile && latestWeight && calories.length > 0 && (
+                    <button
+                      onClick={() => setShowProjectionSettingsModal(true)}
+                      className="text-xs text-fjord hover:text-bone transition-colors underline underline-offset-2"
+                    >
+                      Set up your profile for accurate projections
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -6448,8 +6651,9 @@ export default function KnarrDashboard() {
         isOpen={showBearingNotification}
         onClose={handleDismissBearingNotification}
         onFillOut={handleFillOutBearing}
-        periodStart={currentWeekBounds.start}
-        periodEnd={currentWeekBounds.end}
+        type={bearingNotificationType}
+        periodStart={bearingNotificationType === 'weekly' ? currentWeekBounds.start : currentMonthBounds.start}
+        periodEnd={bearingNotificationType === 'weekly' ? currentWeekBounds.end : currentMonthBounds.end}
       />
       <TrueNorthModal
         isOpen={showTrueNorthModal}
@@ -6522,6 +6726,13 @@ export default function KnarrDashboard() {
         onDeleteWeight={deleteWeight}
         onClearAllData={handleClearAllData}
         onResetOnboarding={handleResetOnboarding}
+      />
+      <ProjectionSettingsModal
+        isOpen={showProjectionSettingsModal}
+        onClose={() => setShowProjectionSettingsModal(false)}
+        existingProfile={userProfile}
+        onSave={saveUserProfile}
+        currentWeight={latestWeight?.weight}
       />
     </div>
   )

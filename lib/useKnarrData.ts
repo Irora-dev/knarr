@@ -17,11 +17,13 @@ import {
   financeAccountOps,
   financeTransactionOps,
   netWorthSnapshotOps,
+  userProfileOps,
   settingsOps,
   userSettingsOps,
   UserSettings,
   DEFAULT_USER_SETTINGS
 } from './entities'
+import type { UserProfile, ProjectionSettings, BiologicalSex, ActivityLevel } from './types'
 import {
   encryptObject,
   decryptObject,
@@ -220,6 +222,13 @@ export function useKnarrData() {
   const [onboardingComplete, setOnboardingCompleteState] = useState(false)
   const [tutorialComplete, setTutorialCompleteState] = useState(false)
 
+  // User profile for TDEE/projection calculations
+  const [userProfile, setUserProfileState] = useState<UserProfile | null>(null)
+  const [projectionSettings, setProjectionSettingsState] = useState<ProjectionSettings>({
+    timeframe: '12w',
+    show_confidence_bands: false
+  })
+
   // Load all data
   const loadData = useCallback(async () => {
     setIsLoading(true)
@@ -305,6 +314,18 @@ export function useKnarrData() {
       setCalorieGoalState(loadedSettings.calorieGoal && loadedSettings.calorieGoal > 0 ? loadedSettings.calorieGoal : null)
       setOnboardingCompleteState(loadedSettings.onboardingComplete)
       setTutorialCompleteState(loadedSettings.tutorialComplete)
+
+      // Load user profile for TDEE/projection (if it exists)
+      try {
+        const profileData = await userProfileOps.getAll(userId)
+        if (profileData.length > 0) {
+          // Use most recent profile
+          const profile = profileData[0]
+          setUserProfileState(profile as unknown as UserProfile)
+        }
+      } catch (error) {
+        console.error('Error loading user profile:', error)
+      }
 
       // Load finance encryption key
       const savedEncryptionKey = getFromStorage<string | null>(SETTINGS_KEYS.financeEncryptionKey, null)
@@ -842,6 +863,39 @@ export function useKnarrData() {
     await userSettingsOps.save(userId, { tutorialComplete: value })
   }, [userId])
 
+  // User profile operations for TDEE/projection calculations
+  const saveUserProfile = useCallback(async (profileData: Omit<UserProfile, 'id' | 'created_at'>) => {
+    const now = new Date().toISOString()
+
+    if (userProfile) {
+      // Update existing profile
+      const updated = await userProfileOps.update(userProfile.id, {
+        ...profileData,
+        updated_at: now
+      })
+      setUserProfileState(updated as unknown as UserProfile)
+      return updated
+    } else {
+      // Create new profile
+      const created = await userProfileOps.create(userId, {
+        height_cm: profileData.height_cm,
+        birth_date: profileData.birth_date,
+        biological_sex: profileData.biological_sex,
+        activity_level: profileData.activity_level,
+        training_days_per_week: profileData.training_days_per_week,
+        tdee_override: profileData.tdee_override,
+        updated_at: now,
+        created_at: now
+      })
+      setUserProfileState(created as unknown as UserProfile)
+      return created
+    }
+  }, [userId, userProfile])
+
+  const updateProjectionSettings = useCallback((settings: Partial<ProjectionSettings>) => {
+    setProjectionSettingsState(prev => ({ ...prev, ...settings }))
+  }, [])
+
   // Clear all data
   const clearAllData = useCallback(async () => {
     if (useSupabase) {
@@ -891,6 +945,8 @@ export function useKnarrData() {
     setCalorieGoalState(null)
     setOnboardingCompleteState(false)
     setTutorialCompleteState(false)
+    setUserProfileState(null)
+    setProjectionSettingsState({ timeframe: '12w', show_confidence_bands: false })
   }, [useSupabase, userId, calories, weights, habits, habitLogs, tasks, headings, messages, bearings, lifeGoals, waypoints, financeAccounts, financeTransactions, netWorthSnapshots])
 
   return {
@@ -981,6 +1037,12 @@ export function useKnarrData() {
     setOnboardingComplete,
     getTutorialComplete,
     setTutorialComplete,
+
+    // User profile for TDEE/projections
+    userProfile,
+    projectionSettings,
+    saveUserProfile,
+    updateProjectionSettings,
 
     // Clear all
     clearAllData,

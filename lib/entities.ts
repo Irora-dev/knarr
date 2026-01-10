@@ -294,6 +294,18 @@ export const netWorthSnapshotOps = createEntityOperations<{
   created_at: string
 }>('net_worth_snapshot')
 
+// User profile for TDEE and weight projection calculations
+export const userProfileOps = createEntityOperations<{
+  height_cm: number
+  birth_date: string
+  biological_sex: 'male' | 'female'
+  activity_level: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active'
+  training_days_per_week: number
+  tdee_override: number | null
+  updated_at: string
+  created_at: string
+}>('user_profile')
+
 // Settings stored separately (not user-specific in same way)
 export const settingsOps = {
   async get<T>(key: string, defaultValue: T): Promise<T> {
