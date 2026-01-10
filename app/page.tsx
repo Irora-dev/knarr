@@ -2110,6 +2110,104 @@ function MessageDeliveryModal({
   )
 }
 
+// Notification Dot Indicator
+function NotificationDot({ className = '' }: { className?: string }) {
+  return (
+    <span className={`absolute -top-1 -right-1 w-2.5 h-2.5 bg-ember rounded-full animate-pulse ${className}`} />
+  )
+}
+
+// Weekly Bearing Notification Popup
+function BearingNotificationPopup({
+  isOpen,
+  onClose,
+  onFillOut,
+  periodStart,
+  periodEnd
+}: {
+  isOpen: boolean
+  onClose: () => void
+  onFillOut: () => void
+  periodStart: string
+  periodEnd: string
+}) {
+  const formatPeriodDisplay = () => {
+    const start = new Date(periodStart + 'T00:00:00')
+    const end = new Date(periodEnd + 'T00:00:00')
+    return `${start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${end.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="absolute inset-0 bg-forge-black/80 backdrop-blur-md"
+            onClick={onClose}
+          />
+          <motion.div
+            className="relative z-10 w-full max-w-md"
+            initial={{ scale: 0.8, opacity: 0, y: 50 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.8, opacity: 0, y: 50 }}
+            transition={{ type: 'spring', damping: 20, stiffness: 200 }}
+          >
+            {/* Floating compass animation */}
+            <motion.div
+              className="flex justify-center mb-4"
+              animate={{ y: [0, -8, 0], rotate: [0, 5, -5, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-ember/30 to-ember/10 flex items-center justify-center border border-ember/30 shadow-lg shadow-ember/20">
+                <CompassIcon className="w-10 h-10 text-ember" />
+              </div>
+            </motion.div>
+
+            <div className="glass-modal p-6 rounded-2xl text-center">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <span className="text-2xl">🧭</span>
+                <h2 className="font-display text-xl text-bone">Time to Reflect</h2>
+              </div>
+
+              <p className="text-sm text-stone mb-2">
+                Your weekly bearing is due
+              </p>
+
+              <div className="glass-recessed px-3 py-2 rounded-lg mb-4 inline-block">
+                <span className="text-xs text-fjord font-medium">{formatPeriodDisplay()}</span>
+              </div>
+
+              <p className="text-fog text-sm mb-6 leading-relaxed">
+                Take a moment to reflect on your wins, challenges, and lessons from this week.
+              </p>
+
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={onFillOut}
+                  className="btn-primary w-full"
+                >
+                  Fill Out Now
+                </button>
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 text-sm text-stone hover:text-fog transition-colors"
+                >
+                  Remind Me Later
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
 // Message Card Component
 function MessageCard({
   message,
@@ -3888,6 +3986,10 @@ export default function KnarrDashboard() {
   const [currentDeliveredMessage, setCurrentDeliveredMessage] = useState<Message | null>(null)
   const [hasCheckedMessages, setHasCheckedMessages] = useState(false)
 
+  // Bearing notification state
+  const [showBearingNotification, setShowBearingNotification] = useState(false)
+  const [bearingNotificationDismissed, setBearingNotificationDismissed] = useState(false)
+
   // Inline edit state for header stats
   const [editingStat, setEditingStat] = useState<'calories' | 'weight' | 'heading' | null>(null)
   const [editValue, setEditValue] = useState('')
@@ -3962,17 +4064,22 @@ export default function KnarrDashboard() {
 
   const today = getTodayString()
 
-  // Check onboarding status on mount
+  // Set mounted on initial render
   useEffect(() => {
     setMounted(true)
+  }, [])
 
-    // Check onboarding status (settings stored locally)
+  // Check onboarding status AFTER data has loaded
+  // This prevents showing onboarding while user settings are still loading from Supabase
+  useEffect(() => {
+    if (!dataLoaded) return // Wait for data to load first
+
     const onboardingDone = getOnboardingComplete()
     setHasCompletedOnboarding(onboardingDone)
     if (!onboardingDone) {
       setShowOnboarding(true)
     }
-  }, [getOnboardingComplete])
+  }, [dataLoaded, getOnboardingComplete])
 
   // Check for delivered messages on load
   useEffect(() => {
@@ -4140,6 +4247,33 @@ export default function KnarrDashboard() {
   const recentBearings = bearings
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 4)
+
+  // Weekly bearing notification logic
+  // Show notification if: it's Sunday OR we're past Monday in current week, AND no bearing exists
+  const needsWeeklyBearing = !currentWeekBearing
+
+  // Check for bearing notification on mount and when week changes
+  useEffect(() => {
+    if (!needsWeeklyBearing) {
+      // Bearing already completed, hide notification
+      setShowBearingNotification(false)
+      return
+    }
+
+    // Check localStorage for dismissed state for current week
+    const dismissedKey = `bearing_dismissed_${currentWeekBounds.start}`
+    const wasDismissed = localStorage.getItem(dismissedKey) === 'true'
+    setBearingNotificationDismissed(wasDismissed)
+
+    // Show popup if not dismissed
+    if (!wasDismissed) {
+      // Small delay to let the app load first
+      const timer = setTimeout(() => {
+        setShowBearingNotification(true)
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [currentWeekBounds.start, needsWeeklyBearing])
 
   // Handlers - now use hook methods
   const handleLogCalories = (value: string, date: string) => {
@@ -4335,6 +4469,20 @@ export default function KnarrDashboard() {
     setShowBearingModal(true)
   }
 
+  // Bearing notification handlers
+  const handleDismissBearingNotification = () => {
+    const dismissedKey = `bearing_dismissed_${currentWeekBounds.start}`
+    localStorage.setItem(dismissedKey, 'true')
+    setBearingNotificationDismissed(true)
+    setShowBearingNotification(false)
+  }
+
+  const handleFillOutBearing = () => {
+    setShowBearingNotification(false)
+    setBearingType('weekly')
+    setShowBearingModal(true)
+  }
+
   const handleAddLifeGoal = (goalData: Omit<LifeGoal, 'id' | 'created_at' | 'progress'>) => {
     if (editingGoal) {
       // Update existing goal
@@ -4446,8 +4594,8 @@ export default function KnarrDashboard() {
     .sort((a, b) => new Date(b.achieved_date).getTime() - new Date(a.achieved_date).getTime())
     .slice(0, 10)
 
-  // Loading state
-  if (!mounted || authLoading) {
+  // Loading state - wait for auth and data to load before showing anything
+  if (!mounted || authLoading || dataLoading) {
     return (
       <div className="min-h-screen bg-forge-black flex items-center justify-center">
         <motion.div
@@ -4552,6 +4700,16 @@ export default function KnarrDashboard() {
                 <div id="tutorial-mode-toggle">
                   <ModeToggle mode={mode} onToggle={() => setMode(mode === 'view' ? 'log' : 'view')} />
                 </div>
+                {needsWeeklyBearing && (
+                  <button
+                    onClick={() => { setBearingType('weekly'); setShowBearingModal(true) }}
+                    className="relative p-2 rounded-lg glass-recessed text-ember hover:bg-ember/10 transition-colors"
+                    title="Weekly bearing due"
+                  >
+                    <CompassIcon className="w-4 h-4" />
+                    <NotificationDot />
+                  </button>
+                )}
                 <div id="tutorial-greeting" className="text-right hidden sm:block">
                   <p className="text-fog text-sm">{getGreeting()},</p>
                   <p className="font-display text-lg text-bone font-semibold truncate max-w-[120px]">
@@ -5468,11 +5626,12 @@ export default function KnarrDashboard() {
             {VIEW_TABS.map((tab) => {
               const TabIcon = tab.icon
               const isActive = activeViewTab === tab.id
+              const showNotificationDot = tab.id === 'reflect' && needsWeeklyBearing
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveViewTab(tab.id as ViewTab)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                  className={`relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                     isActive
                       ? 'bg-ember text-forge-black'
                       : 'text-stone hover:text-bone hover:bg-white/5'
@@ -5480,6 +5639,7 @@ export default function KnarrDashboard() {
                 >
                   <TabIcon className="w-3.5 h-3.5" />
                   {tab.label}
+                  {showNotificationDot && !isActive && <NotificationDot className="top-1 right-1" />}
                 </button>
               )
             })}
@@ -6283,6 +6443,13 @@ export default function KnarrDashboard() {
         periodStart={bearingType === 'weekly' ? currentWeekBounds.start : currentMonthBounds.start}
         periodEnd={bearingType === 'weekly' ? currentWeekBounds.end : currentMonthBounds.end}
         existingBearing={bearingType === 'weekly' ? currentWeekBearing : currentMonthBearing}
+      />
+      <BearingNotificationPopup
+        isOpen={showBearingNotification}
+        onClose={handleDismissBearingNotification}
+        onFillOut={handleFillOutBearing}
+        periodStart={currentWeekBounds.start}
+        periodEnd={currentWeekBounds.end}
       />
       <TrueNorthModal
         isOpen={showTrueNorthModal}

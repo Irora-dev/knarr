@@ -492,7 +492,8 @@ export function useKnarrData() {
     setTasks(prev => prev.map(t => t.id === id ? updated as Task : t))
 
     // If task is recurring, create the next instance
-    if (task && task.recurrence !== 'none') {
+    // Check explicitly for valid recurrence values (old tasks may have undefined)
+    if (task && task.recurrence && task.recurrence !== 'none') {
       const baseDate = task.scheduled_date ? new Date(task.scheduled_date) : new Date()
       let nextDate: Date
 
