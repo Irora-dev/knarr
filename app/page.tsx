@@ -5839,7 +5839,55 @@ export default function KnarrDashboard() {
             })}
           </div>
 
-          {/* Weight Projection Section - Health Tab Only */}
+          {/* Overview Tab: Side-by-side Weight Projection and Calorie Chart */}
+          {activeViewTab === 'overview' && (
+            <div className="grid md:grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
+              {/* Weight Projection - Compact */}
+              <div className="glass p-3 sm:p-4 h-[280px] sm:h-[320px]">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-fjord" />
+                    <span className="text-caption text-stone uppercase">Weight Projection</span>
+                  </div>
+                  <button
+                    onClick={() => setActiveViewTab('health')}
+                    className="text-[10px] text-fjord hover:text-bone transition-colors"
+                  >
+                    Details
+                  </button>
+                </div>
+                {projectionData ? (
+                  <WeightProjectionChart
+                    weights={weights}
+                    projectionData={projectionData.projectionPoints}
+                    goalWeight={weightGoal}
+                    showConfidenceBands={projectionSettings.show_confidence_bands}
+                    timeframe={projectionSettings.timeframe}
+                    onToggleBands={() => updateProjectionSettings({
+                      show_confidence_bands: !projectionSettings.show_confidence_bands
+                    })}
+                    onChangeTimeframe={(tf) => updateProjectionSettings({ timeframe: tf })}
+                  />
+                ) : (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-center">
+                      <TrendingUp className="w-6 h-6 text-stone mb-2 mx-auto opacity-50" />
+                      <p className="text-fog text-sm">
+                        {!latestWeight ? 'Log weight to see projections' : 'Log calories to project'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Calorie Chart */}
+              <div id="tutorial-charts" className="glass p-3 sm:p-4 h-[280px] sm:h-[320px]">
+                <CalorieChart calories={calories} goal={calorieGoal} onLoadSample={loadSampleCalorieData} />
+              </div>
+            </div>
+          )}
+
+          {/* Health Tab: Full Weight Projection with Controls */}
           {activeViewTab === 'health' && (
             <div className="glass p-3 sm:p-4 mb-3 sm:mb-4">
               <div className="flex items-center justify-between mb-3">
@@ -5970,9 +6018,9 @@ export default function KnarrDashboard() {
             </div>
           )}
 
-          {/* Calorie Chart - Full Width */}
-          {(activeViewTab === 'overview' || activeViewTab === 'health') && (
-            <div id="tutorial-charts" className="glass p-3 sm:p-4 mb-3 sm:mb-4 h-[240px] sm:h-[280px]">
+          {/* Calorie Chart - Health Tab Only (full width) */}
+          {activeViewTab === 'health' && (
+            <div className="glass p-3 sm:p-4 mb-3 sm:mb-4 h-[240px] sm:h-[280px]">
               <CalorieChart calories={calories} goal={calorieGoal} onLoadSample={loadSampleCalorieData} />
             </div>
           )}
