@@ -77,7 +77,8 @@ import {
   estimateTimeToGoal,
   estimateBasicTDEE,
   addMilestones,
-  mergeProjections
+  mergeProjections,
+  calculateTargetWeightToday
 } from '../lib/projectionUtils'
 import {
   LineChart,
@@ -1714,7 +1715,7 @@ function WeightGoalModal({
             onClick={onClose}
           />
           <motion.div
-            className="glass-modal p-5 sm:p-8 w-full max-w-md relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
+            className="glass-modal p-5 sm:p-8 w-full max-w-md mx-2 sm:mx-0 relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -1823,7 +1824,7 @@ function CalorieGoalModal({
             onClick={onClose}
           />
           <motion.div
-            className="glass-modal p-5 sm:p-8 w-full max-w-md relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
+            className="glass-modal p-5 sm:p-8 w-full max-w-md mx-2 sm:mx-0 relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -1942,7 +1943,7 @@ function WriteMessageModal({
             onClick={onClose}
           />
           <motion.div
-            className="glass-modal p-5 sm:p-8 w-full max-w-lg relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
+            className="glass-modal p-5 sm:p-8 w-full max-w-lg mx-2 sm:mx-0 relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -1975,7 +1976,7 @@ function WriteMessageModal({
                 autoFocus
               />
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="stat-label block mb-2">Deliver in</label>
                   <select
@@ -2536,7 +2537,7 @@ function BearingModal({
             onClick={onClose}
           />
           <motion.div
-            className="glass-modal p-5 sm:p-8 w-full max-w-lg relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
+            className="glass-modal p-5 sm:p-8 w-full max-w-lg mx-2 sm:mx-0 relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -2777,7 +2778,7 @@ function TrueNorthModal({
             onClick={onClose}
           />
           <motion.div
-            className="glass-modal p-5 sm:p-8 w-full max-w-lg relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
+            className="glass-modal p-5 sm:p-8 w-full max-w-lg mx-2 sm:mx-0 relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -2807,7 +2808,7 @@ function TrueNorthModal({
               {/* Category Selection */}
               <div>
                 <label className="stat-label block mb-2">Category</label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {GOAL_CATEGORIES.map((cat) => {
                     const IconComponent = cat.icon
                     return (
@@ -3035,7 +3036,7 @@ function WaypointModal({
             onClick={onClose}
           />
           <motion.div
-            className="glass-modal p-5 sm:p-8 w-full max-w-md relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
+            className="glass-modal p-5 sm:p-8 w-full max-w-md mx-2 sm:mx-0 relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -3327,7 +3328,7 @@ function QuickLogModal({
                       <button
                         type="button"
                         onClick={() => adjustDate(-1)}
-                        className="w-7 h-7 rounded-lg glass-recessed flex items-center justify-center text-fog hover:text-bone transition-colors"
+                        className="w-9 h-9 sm:w-7 sm:h-7 rounded-lg glass-recessed flex items-center justify-center text-fog hover:text-bone transition-colors"
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </button>
@@ -3335,7 +3336,7 @@ function QuickLogModal({
                         type="button"
                         onClick={() => adjustDate(1)}
                         disabled={isToday}
-                        className="w-7 h-7 rounded-lg glass-recessed flex items-center justify-center text-fog hover:text-bone transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="w-9 h-9 sm:w-7 sm:h-7 rounded-lg glass-recessed flex items-center justify-center text-fog hover:text-bone transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                       >
                         <ChevronRight className="w-4 h-4" />
                       </button>
@@ -3347,7 +3348,7 @@ function QuickLogModal({
                         key={qd.date}
                         type="button"
                         onClick={() => setSelectedDate(qd.date)}
-                        className={`flex-1 py-2 px-3 rounded-lg text-xs font-medium transition-all ${
+                        className={`flex-1 py-2.5 sm:py-2 px-3 min-h-[44px] sm:min-h-0 rounded-lg text-xs font-medium transition-all ${
                           selectedDate === qd.date
                             ? 'bg-ember/20 text-ember border border-ember/30'
                             : 'glass-recessed text-fog hover:text-bone'
@@ -3456,7 +3457,7 @@ function FinanceSetupModal({
             onClick={onClose}
           />
           <motion.div
-            className="glass-modal p-5 sm:p-8 w-full max-w-md relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
+            className="glass-modal p-5 sm:p-8 w-full max-w-md mx-2 sm:mx-0 relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -3603,7 +3604,7 @@ function FinanceAccountModal({
             onClick={onClose}
           />
           <motion.div
-            className="glass-modal p-5 sm:p-8 w-full max-w-md relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
+            className="glass-modal p-5 sm:p-8 w-full max-w-md mx-2 sm:mx-0 relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -3649,7 +3650,7 @@ function FinanceAccountModal({
                   <label className="text-xs text-stone uppercase tracking-wider mb-2 block">
                     Account Type
                   </label>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {ACCOUNT_TYPES.map((t) => (
                       <button
                         key={t.value}
@@ -3669,8 +3670,8 @@ function FinanceAccountModal({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="col-span-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="col-span-2 sm:col-span-2">
                     <label className="text-xs text-stone uppercase tracking-wider mb-2 block">
                       Balance
                     </label>
@@ -3683,7 +3684,7 @@ function FinanceAccountModal({
                       className="input w-full"
                     />
                   </div>
-                  <div>
+                  <div className="col-span-2 sm:col-span-1">
                     <label className="text-xs text-stone uppercase tracking-wider mb-2 block">
                       Currency
                     </label>
@@ -3781,7 +3782,7 @@ function SupplementDetailModal({
             onClick={onClose}
           />
           <motion.div
-            className="glass-modal p-5 sm:p-8 w-full max-w-md relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
+            className="glass-modal p-5 sm:p-8 w-full max-w-md mx-2 sm:mx-0 relative z-10 rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto"
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -4309,6 +4310,21 @@ export default function KnarrDashboard() {
     const dailyDeficit = tdee - targetIntake
     const timeToGoal = estimateTimeToGoal(latestWeight.weight, weightGoal, dailyDeficit)
 
+    // Calculate progress vs target trajectory
+    // Get the first weight entry to use as baseline
+    const sortedWeights = [...weights].sort((a, b) =>
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    )
+    const firstWeight = sortedWeights[0]
+    const progress = firstWeight
+      ? calculateTargetWeightToday(
+          { date: firstWeight.date, weight: firstWeight.weight },
+          weightGoal,
+          latestWeight.weight,
+          dailyDeficit
+        )
+      : null
+
     return {
       projectionPoints: merged,
       tdee,
@@ -4317,9 +4333,10 @@ export default function KnarrDashboard() {
       deficit: dailyDeficit,
       timeToGoal,
       projectedEndWeight: merged[merged.length - 1]?.projected_weight ?? null,
-      adaptiveMode
+      adaptiveMode,
+      progress
     }
-  }, [latestWeight, calories, userProfile, projectionSettings.timeframe, projectionSettings.target_intake, projectionSettings.adaptive_mode, weightGoal])
+  }, [latestWeight, weights, calories, userProfile, projectionSettings.timeframe, projectionSettings.target_intake, projectionSettings.adaptive_mode, weightGoal])
 
   // Streak calculations - using new grace day recovery system
   const uniqueCalorieDatesSet = new Set(calories.map(c => c.date))
@@ -4885,14 +4902,14 @@ export default function KnarrDashboard() {
                 </div>
                 <button
                   onClick={() => setShowSettingsModal(true)}
-                  className="p-2 rounded-lg text-fog hover:text-bone hover:bg-white/5 transition-colors"
+                  className="p-2.5 sm:p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center rounded-lg text-fog hover:text-bone hover:bg-white/5 transition-colors"
                   title="Settings"
                 >
                   <Settings className="w-4 h-4" />
                 </button>
                 <button
                   onClick={handleSignOutAndReset}
-                  className="p-2 rounded-lg text-fog hover:text-bone hover:bg-white/5 transition-colors"
+                  className="p-2.5 sm:p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center rounded-lg text-fog hover:text-bone hover:bg-white/5 transition-colors"
                   title="Sign out & reset"
                 >
                   <LogOut className="w-4 h-4" />
@@ -5512,22 +5529,22 @@ export default function KnarrDashboard() {
                 ) : (
                   <>
                     {/* Net Worth Summary */}
-                    <div className="grid grid-cols-3 gap-3 mb-4">
-                      <div className="glass-recessed rounded-lg p-3 text-center">
-                        <p className="text-xs text-stone uppercase mb-1">Assets</p>
-                        <p className="text-lg font-mono text-victory-green">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
+                      <div className="glass-recessed rounded-lg p-2 sm:p-3 text-center">
+                        <p className="text-[10px] sm:text-xs text-stone uppercase mb-1">Assets</p>
+                        <p className="text-base sm:text-lg font-mono text-victory-green">
                           ${financeAccounts.filter(a => a.is_asset).reduce((sum, a) => sum + a.balance, 0).toLocaleString()}
                         </p>
                       </div>
-                      <div className="glass-recessed rounded-lg p-3 text-center">
-                        <p className="text-xs text-stone uppercase mb-1">Liabilities</p>
-                        <p className="text-lg font-mono text-blood-red">
+                      <div className="glass-recessed rounded-lg p-2 sm:p-3 text-center">
+                        <p className="text-[10px] sm:text-xs text-stone uppercase mb-1">Liabilities</p>
+                        <p className="text-base sm:text-lg font-mono text-blood-red">
                           ${financeAccounts.filter(a => !a.is_asset).reduce((sum, a) => sum + a.balance, 0).toLocaleString()}
                         </p>
                       </div>
-                      <div className="glass-recessed rounded-lg p-3 text-center">
-                        <p className="text-xs text-stone uppercase mb-1">Net Worth</p>
-                        <p className={`text-lg font-mono ${
+                      <div className="glass-recessed rounded-lg p-2 sm:p-3 text-center">
+                        <p className="text-[10px] sm:text-xs text-stone uppercase mb-1">Net Worth</p>
+                        <p className={`text-base sm:text-lg font-mono ${
                           financeAccounts.filter(a => a.is_asset).reduce((sum, a) => sum + a.balance, 0) -
                           financeAccounts.filter(a => !a.is_asset).reduce((sum, a) => sum + a.balance, 0) >= 0
                             ? 'text-victory-green' : 'text-blood-red'
@@ -5994,6 +6011,7 @@ export default function KnarrDashboard() {
                       timeToGoal={projectionData.timeToGoal}
                       projectedWeight={projectionData.projectedEndWeight}
                       hasProfile={!!userProfile}
+                      progress={projectionData.progress}
                     />
                   </div>
                 </>
@@ -6058,18 +6076,18 @@ export default function KnarrDashboard() {
             </div>
 
             {/* Stats Row */}
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              <div className="glass-recessed rounded-lg p-3 text-center">
-                <p className="text-2xl font-mono text-bone">{todayTasks.length}</p>
-                <p className="text-xs text-stone">Today</p>
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
+              <div className="glass-recessed rounded-lg p-2 sm:p-3 text-center">
+                <p className="text-xl sm:text-2xl font-mono text-bone">{todayTasks.length}</p>
+                <p className="text-[10px] sm:text-xs text-stone">Today</p>
               </div>
-              <div className="glass-recessed rounded-lg p-3 text-center">
-                <p className="text-2xl font-mono text-ember">{upcomingTasks.length}</p>
-                <p className="text-xs text-stone">Upcoming</p>
+              <div className="glass-recessed rounded-lg p-2 sm:p-3 text-center">
+                <p className="text-xl sm:text-2xl font-mono text-ember">{upcomingTasks.length}</p>
+                <p className="text-[10px] sm:text-xs text-stone">Upcoming</p>
               </div>
-              <div className="glass-recessed rounded-lg p-3 text-center">
-                <p className="text-2xl font-mono text-victory-green">{completedTasks.length}</p>
-                <p className="text-xs text-stone">Completed</p>
+              <div className="glass-recessed rounded-lg p-2 sm:p-3 text-center">
+                <p className="text-xl sm:text-2xl font-mono text-victory-green">{completedTasks.length}</p>
+                <p className="text-[10px] sm:text-xs text-stone">Completed</p>
               </div>
             </div>
 
@@ -6308,22 +6326,22 @@ export default function KnarrDashboard() {
               ) : (
                 <>
                   {/* Net Worth Summary */}
-                  <div className="grid grid-cols-3 gap-3 mb-4">
-                    <div className="glass-recessed rounded-lg p-3 text-center">
-                      <p className="text-xs text-stone uppercase mb-1">Assets</p>
-                      <p className="text-xl font-mono text-victory-green">
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
+                    <div className="glass-recessed rounded-lg p-2 sm:p-3 text-center">
+                      <p className="text-[10px] sm:text-xs text-stone uppercase mb-1">Assets</p>
+                      <p className="text-lg sm:text-xl font-mono text-victory-green">
                         ${financeAccounts.filter(a => a.is_asset).reduce((sum, a) => sum + a.balance, 0).toLocaleString()}
                       </p>
                     </div>
-                    <div className="glass-recessed rounded-lg p-3 text-center">
-                      <p className="text-xs text-stone uppercase mb-1">Liabilities</p>
-                      <p className="text-xl font-mono text-blood-red">
+                    <div className="glass-recessed rounded-lg p-2 sm:p-3 text-center">
+                      <p className="text-[10px] sm:text-xs text-stone uppercase mb-1">Liabilities</p>
+                      <p className="text-lg sm:text-xl font-mono text-blood-red">
                         ${financeAccounts.filter(a => !a.is_asset).reduce((sum, a) => sum + a.balance, 0).toLocaleString()}
                       </p>
                     </div>
-                    <div className="glass-recessed rounded-lg p-3 text-center">
-                      <p className="text-xs text-stone uppercase mb-1">Net Worth</p>
-                      <p className={`text-xl font-mono ${
+                    <div className="glass-recessed rounded-lg p-2 sm:p-3 text-center">
+                      <p className="text-[10px] sm:text-xs text-stone uppercase mb-1">Net Worth</p>
+                      <p className={`text-lg sm:text-xl font-mono ${
                         financeAccounts.filter(a => a.is_asset).reduce((sum, a) => sum + a.balance, 0) -
                         financeAccounts.filter(a => !a.is_asset).reduce((sum, a) => sum + a.balance, 0) >= 0
                           ? 'text-victory-green' : 'text-blood-red'

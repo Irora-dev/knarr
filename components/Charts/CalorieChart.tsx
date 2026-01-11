@@ -195,7 +195,7 @@ export function CalorieChart({
             </ComposedChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-[180px] flex items-center justify-center">
+          <div className="h-full min-h-[160px] flex items-center justify-center">
             <div className="text-stone text-sm">Loading chart...</div>
           </div>
         )}

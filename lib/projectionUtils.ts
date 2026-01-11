@@ -475,3 +475,143 @@ export const TIMEFRAME_OPTIONS: { value: ProjectionTimeframe; label: string }[] 
   { value: '6m', label: '6 months' },
   { value: '1y', label: '1 year' }
 ]
+
+/**
+ * Progress status types
+ */
+export type ProgressStatus = 'ahead' | 'on_track' | 'behind' | 'no_goal'
+
+/**
+ * Calculate where weight should be today based on a linear trajectory from start to goal
+ * Uses the first weight entry date as the start point
+ * Calculates expected progress based on healthy weight change rate
+ */
+export function calculateTargetWeightToday(
+  firstWeight: { date: string; weight: number },
+  goalWeight: number | null,
+  currentWeight: number,
+  dailyDeficit: number
+): {
+  targetWeight: number | null
+  difference: number // positive = ahead (lost more than expected), negative = behind
+  status: ProgressStatus
+  daysElapsed: number
+  expectedWeightLoss: number
+} | null {
+  if (!goalWeight) {
+    return {
+      targetWeight: null,
+      difference: 0,
+      status: 'no_goal',
+      daysElapsed: 0,
+      expectedWeightLoss: 0
+    }
+  }
+
+  // Calculate days elapsed since first weight entry
+  const firstDate = new Date(firstWeight.date + 'T00:00:00')
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const daysElapsed = Math.floor((today.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24))
+
+  if (daysElapsed <= 0) {
+    return {
+      targetWeight: firstWeight.weight,
+      difference: 0,
+      status: 'on_track',
+      daysElapsed: 0,
+      expectedWeightLoss: 0
+    }
+  }
+
+  // Calculate expected weight change based on deficit
+  // At the given deficit, how much should have been lost by now?
+  const expectedWeightChange = (dailyDeficit * daysElapsed) / CALORIES_PER_KG_FAT
+  const isLosingWeight = goalWeight < firstWeight.weight
+
+  // Target weight today based on the deficit
+  const targetWeight = isLosingWeight
+    ? firstWeight.weight - expectedWeightChange
+    : firstWeight.weight + Math.abs(expectedWeightChange)
+
+  // Actual change from start
+  const actualChange = firstWeight.weight - currentWeight
+
+  // Expected change by now
+  const expectedChange = expectedWeightChange
+
+  // Difference: positive means ahead (lost more than expected for weight loss)
+  const difference = isLosingWeight
+    ? actualChange - expectedChange
+    : expectedChange - actualChange
+
+  // Determine status with 0.5kg tolerance for "on track"
+  const tolerance = 0.5
+  let status: ProgressStatus
+  if (Math.abs(difference) <= tolerance) {
+    status = 'on_track'
+  } else if (difference > 0) {
+    status = 'ahead'
+  } else {
+    status = 'behind'
+  }
+
+  return {
+    targetWeight: Math.round(targetWeight * 100) / 100,
+    difference: Math.round(difference * 100) / 100,
+    status,
+    daysElapsed,
+    expectedWeightLoss: Math.round(expectedChange * 100) / 100
+  }
+}
+
+/**
+ * Generate a target trajectory line from first weight to goal
+ * Returns data points that can be overlaid on the projection chart
+ */
+export function generateTargetTrajectory(
+  weights: { date: string; weight: number }[],
+  goalWeight: number | null,
+  dailyDeficit: number,
+  projectionDays: number
+): { date: string; target_weight: number }[] {
+  if (!goalWeight || weights.length === 0) return []
+
+  // Get first weight entry
+  const sortedWeights = [...weights].sort((a, b) =>
+    new Date(a.date).getTime() - new Date(b.date).getTime()
+  )
+  const firstWeight = sortedWeights[0]!
+  const firstDate = new Date(firstWeight.date + 'T00:00:00')
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const isLosingWeight = goalWeight < firstWeight.weight
+  const points: { date: string; target_weight: number }[] = []
+
+  // Generate points from first weight date through projection end
+  const totalDays = Math.floor((today.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24)) + projectionDays
+
+  for (let day = 0; day <= totalDays; day++) {
+    const date = new Date(firstDate)
+    date.setDate(date.getDate() + day)
+
+    // Calculate expected weight at this day
+    const expectedChange = (dailyDeficit * day) / CALORIES_PER_KG_FAT
+    const targetWeight = isLosingWeight
+      ? firstWeight.weight - expectedChange
+      : firstWeight.weight + Math.abs(expectedChange)
+
+    // Don't go past the goal
+    const clampedWeight = isLosingWeight
+      ? Math.max(goalWeight, targetWeight)
+      : Math.min(goalWeight, targetWeight)
+
+    points.push({
+      date: date.toISOString().split('T')[0]!,
+      target_weight: Math.round(clampedWeight * 100) / 100
+    })
+  }
+
+  return points
+}

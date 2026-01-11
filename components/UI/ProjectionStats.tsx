@@ -1,6 +1,14 @@
 'use client'
 
-import { TrendingDown, TrendingUp, Calendar, Flame, Target } from 'lucide-react'
+import { TrendingDown, TrendingUp, Calendar, Flame, Target, CheckCircle2, AlertCircle } from 'lucide-react'
+import type { ProgressStatus } from '../../lib/projectionUtils'
+
+interface ProgressData {
+  targetWeight: number | null
+  difference: number
+  status: ProgressStatus
+  daysElapsed: number
+}
 
 interface ProjectionStatsProps {
   tdee: number | null
@@ -9,6 +17,7 @@ interface ProjectionStatsProps {
   timeToGoal: { days: number; weeks: number; date: string } | null
   projectedWeight: number | null
   hasProfile: boolean
+  progress: ProgressData | null
   className?: string
 }
 
@@ -19,11 +28,43 @@ export function ProjectionStats({
   timeToGoal,
   projectedWeight,
   hasProfile,
+  progress,
   className = ''
 }: ProjectionStatsProps) {
   const isDeficit = deficit !== null && deficit > 0
   const isSurplus = deficit !== null && deficit < 0
   const dailyChange = deficit !== null ? Math.abs(deficit) : 0
+
+  // Progress status styling
+  const getProgressColor = (status: ProgressStatus) => {
+    switch (status) {
+      case 'ahead': return 'text-victory-green'
+      case 'on_track': return 'text-fjord'
+      case 'behind': return 'text-amber-400'
+      default: return 'text-stone'
+    }
+  }
+
+  const getProgressIcon = (status: ProgressStatus) => {
+    switch (status) {
+      case 'ahead':
+      case 'on_track':
+        return <CheckCircle2 className="w-3.5 h-3.5 text-victory-green" />
+      case 'behind':
+        return <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+      default:
+        return <Target className="w-3.5 h-3.5 text-stone" />
+    }
+  }
+
+  const getProgressLabel = (status: ProgressStatus) => {
+    switch (status) {
+      case 'ahead': return 'Ahead'
+      case 'on_track': return 'On Track'
+      case 'behind': return 'Behind'
+      default: return 'No Goal'
+    }
+  }
 
   return (
     <div className={`grid grid-cols-2 sm:grid-cols-4 gap-3 ${className}`}>
@@ -42,16 +83,27 @@ export function ProjectionStats({
         <div className="text-[10px] text-stone">kcal/day</div>
       </div>
 
-      {/* Average Calories */}
+      {/* Progress Status */}
       <div className="glass-recessed p-3 rounded-lg">
         <div className="flex items-center gap-1.5 mb-1">
-          <Target className="w-3.5 h-3.5 text-fjord" />
-          <span className="text-[10px] text-stone uppercase">Avg Intake</span>
+          {progress ? getProgressIcon(progress.status) : <Target className="w-3.5 h-3.5 text-stone" />}
+          <span className="text-[10px] text-stone uppercase">Progress</span>
         </div>
-        <div className="font-mono text-lg text-bone">
-          {avgCalories ? avgCalories.toLocaleString() : '--'}
-        </div>
-        <div className="text-[10px] text-stone">kcal/day (14d)</div>
+        {progress && progress.status !== 'no_goal' ? (
+          <>
+            <div className={`font-mono text-lg ${getProgressColor(progress.status)}`}>
+              {getProgressLabel(progress.status)}
+            </div>
+            <div className="text-[10px] text-stone">
+              {progress.difference > 0 ? '+' : ''}{progress.difference.toFixed(1)}kg vs target
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="font-mono text-lg text-bone">--</div>
+            <div className="text-[10px] text-stone">Set a goal</div>
+          </>
+        )}
       </div>
 
       {/* Daily Deficit/Surplus */}
